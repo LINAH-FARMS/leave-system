@@ -81,7 +81,7 @@
           '<td>' + l.days_count + '</td>' +
           '<td>' + formatDate(l.created_at ? l.created_at.split('T')[0] : '') + '</td>' +
           '<td>' + statusBadge(l.status) + '</td>' +
-          '<td style="font-size:11px;color:#666;">' + (l.manager_comment || l.hr_comment || '—') + '</td>' +
+          '<td style="font-size:12px;color:#666;">' + (l.manager_comment || l.hr_comment || '—') + '</td>' +
         '</tr>'
       ).join('');
     }

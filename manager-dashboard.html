@@ -44,8 +44,7 @@
           <table>
             <thead>
               <tr>
-                <th>#</th>
-                <th>الموظف</th>
+                  <th>الموظف</th>
                 <th>الوظيفة</th>
                 <th>النوع</th>
                 <th>المدة</th>
@@ -57,7 +56,7 @@
               </tr>
             </thead>
             <tbody id="requestsBody">
-              <tr><td colspan="10" style="text-align:center;color:#999;">جاري التحميل...</td></tr>
+              <tr><td colspan="9" style="text-align:center;color:#999;">جاري التحميل...</td></tr>
             </tbody>
           </table>
         </div>
@@ -115,7 +114,7 @@
       const filter = document.getElementById('statusFilter').value;
 
       if (!dept && !session.is_hr) {
-        document.getElementById('requestsBody').innerHTML = '<tr><td colspan="10" style="text-align:center;">لم يتم تحديد إدارة</td></tr>';
+        document.getElementById('requestsBody').innerHTML = '<tr><td colspan="9" style="text-align:center;">لم يتم تحديد إدارة</td></tr>';
         return;
       }
 
@@ -137,13 +136,12 @@
         '<div class="stat-card"><div class="num">' + stats.approved + '</div><div class="lbl">معتمد</div></div>';
 
       if (leaves.length === 0) {
-        document.getElementById('requestsBody').innerHTML = '<tr><td colspan="10" style="text-align:center;color:#999;">لا توجد طلبات</td></tr>';
+        document.getElementById('requestsBody').innerHTML = '<tr><td colspan="9" style="text-align:center;color:#999;">لا توجد طلبات</td></tr>';
         return;
       }
 
       document.getElementById('requestsBody').innerHTML = leaves.map(l =>
         '<tr style="' + (l.status === 'pending' ? 'background:#fffde7;' : '') + '">' +
-          '<td>' + l.id + '</td>' +
           '<td><strong>' + l.full_name + '</strong><br><span style="font-size:11px;color:#666;">' + l.emp_code + '</span></td>' +
           '<td>' + l.job_title + '</td>' +
           '<td>' + leaveTypeAr(l.leave_type) + '</td>' +

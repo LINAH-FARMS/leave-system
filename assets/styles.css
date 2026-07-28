@@ -82,8 +82,8 @@ body {
 
 /* Table */
 .table-wrap { overflow-x: auto; }
-table { width: 100%; border-collapse: collapse; font-size: 13px; }
-th, td { padding: 10px 12px; text-align: center; border-bottom: 1px solid #eee; }
+table { width: 100%; border-collapse: collapse; font-size: 14px; }
+th, td { padding: 12px 14px; text-align: center; border-bottom: 1px solid #eee; }
 th { background: #1b5e20; color: white; font-weight: 600; }
 tr:hover { background: #f5faf5; }
 
@@ -161,8 +161,8 @@ tr:hover { background: #f5faf5; }
   .stats { grid-template-columns: repeat(2, 1fr); }
   .filter-bar { flex-direction: column; }
   .filter-bar .form-group { min-width: 100%; }
-  table { font-size: 12px; }
-  th, td { padding: 6px 8px; }
+  table { font-size: 13px; }
+  th, td { padding: 8px 10px; }
 }
 
 /* Print */

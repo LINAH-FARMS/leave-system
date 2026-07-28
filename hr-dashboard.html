@@ -111,7 +111,6 @@
             <table>
               <thead>
                 <tr>
-                  <th>#</th>
                   <th>الموظف</th>
                   <th>الإدارة</th>
                   <th>النوع</th>
@@ -127,7 +126,7 @@
                 </tr>
               </thead>
               <tbody id="allRequestsBody">
-                <tr><td colspan="13" style="text-align:center;color:#999;">جاري التحميل...</td></tr>
+                <tr><td colspan="12" style="text-align:center;color:#999;">جاري التحميل...</td></tr>
               </tbody>
             </table>
           </div>
@@ -422,7 +421,7 @@
 
       if (leaves.length === 0) {
         document.getElementById('allRequestsBody').innerHTML =
-          '<tr><td colspan="13" style="text-align:center;color:#999;">لا توجد طلبات</td></tr>';
+          '<tr><td colspan="12" style="text-align:center;color:#999;">لا توجد طلبات</td></tr>';
         return;
       }
 
@@ -430,7 +429,6 @@
         const rowClass = l.status === 'pending' ? 'background:#fffde7;' :
                         l.status === 'approved_by_manager' ? 'background:#e8f5e9;' : '';
         return '<tr style="' + rowClass + '">' +
-          '<td>' + l.id + '</td>' +
           '<td><strong>' + l.full_name + '</strong><br><span style="font-size:11px;color:#666;">' + l.emp_code + '</span></td>' +
           '<td><span class="dept-tag" style="background:' + getDeptColor(l.department) + ';">' + l.department + '</span></td>' +
           '<td>' + leaveTypeAr(l.leave_type) + '</td>' +
@@ -438,10 +436,10 @@
           '<td>' + l.days_count + '</td>' +
           '<td>' + (l.phone || '—') + '</td>' +
           '<td style="font-size:12px;max-width:120px;">' + (l.reason || '—') + '</td>' +
-          '<td style="font-size:11px;">' + (l.manager_comment || '—') + '</td>' +
-          '<td style="font-size:11px;">' + (l.hr_comment || '—') + '</td>' +
+          '<td style="font-size:12px;">' + (l.manager_comment || '—') + '</td>' +
+          '<td style="font-size:12px;">' + (l.hr_comment || '—') + '</td>' +
           '<td>' + statusBadge(l.status) + '</td>' +
-          '<td style="font-size:11px;">' + formatDate(l.created_at ? l.created_at.split('T')[0] : '') + '</td>' +
+          '<td style="font-size:12px;">' + formatDate(l.created_at ? l.created_at.split('T')[0] : '') + '</td>' +
           '<td>' + hrActions(l) + '</td>' +
         '</tr>';
       }).join('');
@@ -458,7 +456,7 @@
 
     function hrActions(l) {
       if (l.status === 'approved_by_manager') {
-        return '<button class="btn btn-success btn-sm" onclick="openHrModal(' + l.id + ',\'' + l.full_name.replace(/'/g, "\\'") + '\')">👑 اعتماد</button>';
+        return '<button class="btn btn-success btn-sm" onclick="openHrModal(\'' + l.id + '\',\'' + l.full_name.replace(/'/g, "\\'") + '\')">👑 اعتماد</button>';
       }
       if (l.status === 'pending') {
         return '<span style="font-size:11px;color:#e65100;">بانتظار المدير</span>';
