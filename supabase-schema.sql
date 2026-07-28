@@ -36,6 +36,13 @@ CREATE TABLE IF NOT EXISTS leave_audit (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Disable RLS for simplicity (auth handled client-side)
-ALTER TABLE leave_requests DISABLE ROW LEVEL SECURITY;
-ALTER TABLE leave_audit DISABLE ROW LEVEL SECURITY;
+-- Enable RLS (required for publishable key)
+ALTER TABLE leave_requests ENABLE ROW LEVEL SECURITY;
+ALTER TABLE leave_audit ENABLE ROW LEVEL SECURITY;
+
+-- Allow all operations for anon role (internal system)
+CREATE POLICY allow_all_leave_requests ON leave_requests
+  FOR ALL USING (true) WITH CHECK (true);
+
+CREATE POLICY allow_all_leave_audit ON leave_audit
+  FOR ALL USING (true) WITH CHECK (true);
