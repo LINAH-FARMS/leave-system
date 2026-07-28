@@ -151,7 +151,7 @@ async function updateLeaveStatus(leaveId, status, comment, reviewer) {
     }
   }
 
-  const audit = { leave_id: leaveId, emp_code: parseInt(reviewer), action: status, comment, created_at: new Date().toISOString() };
+  const audit = { leave_id: leaveId, emp_code: String(reviewer), action: status, comment, created_at: new Date().toISOString() };
   try {
     await supabase.from('leave_audit').insert([audit]);
   } catch (_) {
