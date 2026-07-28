@@ -27,6 +27,14 @@
 
       <div class="filter-bar">
         <div class="form-group">
+          <label>الفترة</label>
+          <select id="timeFilter" onchange="loadRequests()">
+            <option value="all">كل الفترات</option>
+            <option value="today">اليوم</option>
+            <option value="month">هذا الشهر</option>
+          </select>
+        </div>
+        <div class="form-group">
           <label>الحالة</label>
           <select id="statusFilter" onchange="loadRequests()">
             <option value="all">كل الطلبات</option>
@@ -111,7 +119,8 @@
 
     async function loadRequests() {
       const dept = window.managerDept;
-      const filter = document.getElementById('statusFilter').value;
+      const statusFilter = document.getElementById('statusFilter').value;
+      const timeFilter = document.getElementById('timeFilter').value;
 
       if (!dept && !session.is_hr) {
         document.getElementById('requestsBody').innerHTML = '<tr><td colspan="9" style="text-align:center;">لم يتم تحديد إدارة</td></tr>';
@@ -120,9 +129,20 @@
 
       let leaves;
       if (session.is_hr) {
-        leaves = await fetchAllLeaves({ department: dept || 'all', status: filter });
+        leaves = await fetchAllLeaves({ department: dept || 'all', status: statusFilter });
       } else {
-        leaves = await fetchDeptLeaves(dept, filter);
+        leaves = await fetchDeptLeaves(dept, statusFilter);
+      }
+
+      if (timeFilter === 'today') {
+        const today = new Date();
+        const todayStr = today.toISOString().split('T')[0];
+        leaves = leaves.filter(l => l.start_date <= todayStr && l.end_date >= todayStr);
+      } else if (timeFilter === 'month') {
+        const now = new Date();
+        const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
+        const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0];
+        leaves = leaves.filter(l => l.start_date <= monthEnd && l.end_date >= monthStart);
       }
 
       const stats = {
