@@ -34,7 +34,6 @@
   <script>
     const params = new URLSearchParams(window.location.search);
     const dept = params.get('dept') || '';
-    const role = params.get('role') || 'employee';
 
     async function doLogin() {
       const code = document.getElementById('empCode').value.trim();
@@ -50,9 +49,12 @@
         return;
       }
 
-      const targets = { employee: 'employee-form.html', manager: 'manager-dashboard.html', hr: 'hr-dashboard.html' };
-      const target = targets[role] || 'employee-form.html';
-      window.location.href = target + (dept ? '?dept=' + encodeURIComponent(dept) : '');
+      const s = result.session;
+      let target;
+      if (s.is_hr) target = 'hr-dashboard.html';
+      else if (s.is_manager) target = 'manager-dashboard.html' + (dept ? '?dept=' + encodeURIComponent(dept) : '');
+      else target = 'employee-form.html';
+      window.location.href = target;
     }
 
     document.getElementById('password').addEventListener('keypress', function(e) {
