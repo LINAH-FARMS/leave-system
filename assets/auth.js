@@ -1,5 +1,4 @@
 // Authentication Module
-// Uses simple hash (matching existing system pattern)
 
 function hashPassword(pw) {
   let hash = 0;
@@ -13,35 +12,57 @@ function hashPassword(pw) {
 }
 
 async function login(empCode, password) {
-  const { data, error } = await supabase
-    .from('employees')
-    .select('*')
-    .eq('emp_code', parseInt(empCode))
-    .single();
+  const code = parseInt(empCode);
+  let empData = null;
 
-  if (error || !data) {
-    return { success: false, message: '✗ كود وظيفي غير صحيح' };
+  // Try Supabase first
+  try {
+    const { data, error } = await supabase
+      .from('employees')
+      .select('*')
+      .eq('emp_code', code)
+      .single();
+    if (!error && data) empData = data;
+  } catch (_) {}
+
+  // Fall back to local data
+  if (!empData) {
+    const local = EMPLOYEES_DATA.find(e => e.c === code);
+    if (!local) return { success: false, message: '✗ كود وظيفي غير صحيح' };
+    empData = {
+      emp_code: local.c,
+      password_hash: local.p,
+      full_name: local.n,
+      job_title: local.j,
+      department: local.d,
+      hire_date: local.h,
+      leave_balance: local.b,
+      monthly_balance: local.m,
+      is_manager: MANAGER_DEPT_CODES[local.c] ? true : false,
+      managed_dept: MANAGER_DEPT_CODES[local.c] || null,
+      is_hr: HR_EMP_CODES.includes(local.c),
+      is_active: true
+    };
   }
 
   const pwHash = hashPassword(password);
-  if (data.password_hash !== pwHash) {
+  if (empData.password_hash !== pwHash) {
     return { success: false, message: '✗ رقم سري غير صحيح' };
   }
 
-  if (!data.is_active) {
+  if (empData.is_active === false) {
     return { success: false, message: '✗ هذا الموظف غير نشط' };
   }
 
-  // Store session
   const session = {
-    emp_code: data.emp_code,
-    name: data.full_name,
-    department: data.department,
-    job_title: data.job_title,
-    is_manager: data.is_manager,
-    managed_dept: data.managed_dept,
-    is_hr: data.is_hr,
-    leave_balance: data.leave_balance
+    emp_code: empData.emp_code,
+    name: empData.full_name,
+    department: empData.department,
+    job_title: empData.job_title,
+    is_manager: empData.is_manager,
+    managed_dept: empData.managed_dept,
+    is_hr: empData.is_hr,
+    leave_balance: empData.leave_balance
   };
   sessionStorage.setItem('leave_session', JSON.stringify(session));
 
