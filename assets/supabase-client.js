@@ -5,7 +5,6 @@ var SUPABASE_ANON_KEY = 'sb_publishable_AvMTa-zmQ4hgA1hJNpYc3g_gu8rlirz';
 var supabase = (function() {
   var baseHeaders = {
     'apikey': SUPABASE_ANON_KEY,
-    'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
     'Content-Type': 'application/json'
   };
 
