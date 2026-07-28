@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>تسجيل دخول الموظف</title>
+  <link rel="stylesheet" href="assets/styles.css">
+  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+  <script src="assets/supabase-client.js"></script>
+  <script src="assets/auth.js"></script>
+</head>
+<body>
+  <div class="login-page">
+    <div class="login-card">
+      <div class="logo">🌿</div>
+      <h2>تسجيل دخول الموظف</h2>
+      <p style="text-align:center;color:#666;margin-bottom:15px;font-size:13px;">أدخل كودك الوظيفي والرقم السري</p>
+      <div class="form-group">
+        <label>👤 الكود الوظيفي</label>
+        <input type="number" id="empCode" placeholder="مثال: 21" autofocus>
+      </div>
+      <div class="form-group">
+        <label>🔒 الرقم السري</label>
+        <input type="password" id="password" placeholder="أدخل الرقم السري">
+      </div>
+      <button class="btn btn-primary" onclick="doLogin()">دخول</button>
+      <div id="error" class="login-error"></div>
+      <div style="text-align:center;margin-top:15px;">
+        <a href="index.html" style="color:#2e7d32;font-size:13px;">← رجوع</a>
+      </div>
+    </div>
+  </div>
+  <script>
+    const dept = new URLSearchParams(window.location.search).get('dept') || '';
+
+    async function doLogin() {
+      const code = document.getElementById('empCode').value.trim();
+      const pw = document.getElementById('password').value;
+      const errEl = document.getElementById('error');
+      errEl.textContent = '';
+
+      if (!code || !pw) { errEl.textContent = '✗ أدخل الكود الوظيفي والرقم السري'; return; }
+
+      const result = await login(code, pw);
+      if (!result.success) {
+        errEl.textContent = result.message;
+        return;
+      }
+
+      window.location.href = 'employee-form.html' + (dept ? '?dept=' + encodeURIComponent(dept) : '');
+    }
+
+    document.getElementById('password').addEventListener('keypress', function(e) {
+      if (e.key === 'Enter') doLogin();
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>إجازاتي</title>
+  <link rel="stylesheet" href="assets/styles.css">
+  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+  <script src="assets/supabase-client.js"></script>
+  <script src="assets/auth.js"></script>
+  <script src="assets/leave-utils.js"></script>
+</head>
+<body>
+  <div class="header">
+    <h1>🌿 إجازاتي</h1>
+    <div class="user-info" id="userInfo"></div>
+  </div>
+  <div class="container">
+    <div class="nav-bar">
+      <a href="employee-form.html" class="btn btn-primary btn-sm">➕ تقديم إجازة</a>
+      <a href="#" class="btn btn-outline btn-sm" onclick="logout()">🚪 خروج</a>
+    </div>
+
+    <div class="stats" id="statsArea"></div>
+
+    <div class="card">
+      <h2>📋 سجل الإجازات</h2>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>النوع</th>
+              <th>من</th>
+              <th>إلى</th>
+              <th>أيام</th>
+              <th>تاريخ التقديم</th>
+              <th>الحالة</th>
+              <th>ملاحظات</th>
+            </tr>
+          </thead>
+          <tbody id="leavesBody">
+            <tr><td colspan="8" style="text-align:center;color:#999;">جاري التحميل...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const session = requireAuth(['employee','manager','hr','any']);
+    if (session) {
+      document.getElementById('userInfo').textContent = session.name + ' | ' + session.department + ' | الرصيد: ' + (session.leave_balance || 0);
+      loadLeaves();
+    }
+
+    async function loadLeaves() {
+      const leaves = await fetchMyLeaves(session.emp_code);
+
+      const total = leaves.length;
+      const pending = leaves.filter(l => l.status === 'pending').length;
+      const approved = leaves.filter(l => l.status.includes('approved')).length;
+
+      document.getElementById('statsArea').innerHTML =
+        '<div class="stat-card"><div class="num">' + total + '</div><div class="lbl">إجمالي</div></div>' +
+        '<div class="stat-card"><div class="num">' + pending + '</div><div class="lbl">معلق</div></div>' +
+        '<div class="stat-card"><div class="num">' + approved + '</div><div class="lbl">معتمد</div></div>';
+
+      if (leaves.length === 0) {
+        document.getElementById('leavesBody').innerHTML = '<tr><td colspan="8" style="text-align:center;color:#999;">لا توجد إجازات سابقة</td></tr>';
+        return;
+      }
+
+      document.getElementById('leavesBody').innerHTML = leaves.map((l, i) =>
+        '<tr>' +
+          '<td>' + (i + 1) + '</td>' +
+          '<td>' + leaveTypeAr(l.leave_type) + '</td>' +
+          '<td>' + formatDate(l.start_date) + '</td>' +
+          '<td>' + formatDate(l.end_date) + '</td>' +
+          '<td>' + l.days_count + '</td>' +
+          '<td>' + formatDate(l.created_at ? l.created_at.split('T')[0] : '') + '</td>' +
+          '<td>' + statusBadge(l.status) + '</td>' +
+          '<td style="font-size:11px;color:#666;">' + (l.manager_comment || l.hr_comment || '—') + '</td>' +
+        '</tr>'
+      ).join('');
+    }
+  </script>
+</body>
+</html>

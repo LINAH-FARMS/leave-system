@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>لوحة مدير الإدارة</title>
+  <link rel="stylesheet" href="assets/styles.css">
+  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+  <script src="assets/supabase-client.js"></script>
+  <script src="assets/auth.js"></script>
+  <script src="assets/leave-utils.js"></script>
+</head>
+<body>
+  <div class="header">
+    <h1>👔 لوحة مدير الإدارة</h1>
+    <div class="user-info" id="userInfo"></div>
+  </div>
+  <div class="container">
+    <div id="loginPrompt" style="display:none;text-align:center;padding:40px;">
+      <p style="font-size:18px;">🔒 يجب تسجيل الدخول كمدير</p>
+      <a href="employee-login.html" class="btn btn-primary" style="margin-top:15px;">تسجيل الدخول</a>
+    </div>
+
+    <div id="dashboardArea" style="display:none;">
+      <div class="stats" id="statsArea"></div>
+
+      <div class="filter-bar">
+        <div class="form-group">
+          <label>الحالة</label>
+          <select id="statusFilter" onchange="loadRequests()">
+            <option value="all">كل الطلبات</option>
+            <option value="pending">قيد الانتظار</option>
+            <option value="approved_by_manager">تمت الموافقة</option>
+            <option value="rejected_by_manager">مرفوض</option>
+          </select>
+        </div>
+        <button class="btn btn-outline" onclick="loadRequests()">🔄 تحديث</button>
+      </div>
+
+      <div class="card">
+        <h2>📋 طلبات الإجازة - قسم: <span id="deptName"></span></h2>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>الموظف</th>
+                <th>الوظيفة</th>
+                <th>النوع</th>
+                <th>المدة</th>
+                <th>أيام</th>
+                <th>رقم الموبايل</th>
+                <th>السبب</th>
+                <th>الحالة</th>
+                <th>الإجراء</th>
+              </tr>
+            </thead>
+            <tbody id="requestsBody">
+              <tr><td colspan="10" style="text-align:center;color:#999;">جاري التحميل...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="nav-bar">
+        <a href="employee-form.html" class="btn btn-outline btn-sm">➕ تقديم إجازة</a>
+        <a href="#" class="btn btn-outline btn-sm" onclick="logout()">🚪 خروج</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Action Modal -->
+  <div class="modal-overlay" id="actionModal">
+    <div class="modal">
+      <h3 id="modalTitle">إجراء على الطلب</h3>
+      <p id="modalInfo" style="margin-bottom:12px;"></p>
+      <div class="form-group">
+        <label>ملاحظات</label>
+        <textarea id="modalComment" rows="3" placeholder="أكتب ملاحظاتك"></textarea>
+      </div>
+      <div class="btn-group">
+        <button class="btn btn-success" onclick="doApprove()">✅ موافقة</button>
+        <button class="btn btn-danger" onclick="doReject()">❌ رفض</button>
+        <button class="btn btn-outline" onclick="closeModal()">إلغاء</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const session = requireAuth(['any']);
+    let currentLeaveId = null;
+
+    if (session) {
+      const dept = new URLSearchParams(window.location.search).get('dept') || session.managed_dept || session.department;
+      const isAuthorized = session.is_manager || session.is_hr;
+
+      if (!isAuthorized) {
+        document.getElementById('loginPrompt').style.display = 'block';
+        document.getElementById('dashboardArea').style.display = 'none';
+      } else {
+        document.getElementById('dashboardArea').style.display = 'block';
+        document.getElementById('userInfo').textContent = session.name + ' | مدير ' + (dept || '');
+        document.getElementById('deptName').textContent = dept;
+        // Store dept for later use
+        window.managerDept = dept;
+        loadRequests();
+      }
+    } else {
+      document.getElementById('loginPrompt').style.display = 'block';
+    }
+
+    async function loadRequests() {
+      const dept = window.managerDept;
+      const filter = document.getElementById('statusFilter').value;
+
+      if (!dept && !session.is_hr) {
+        document.getElementById('requestsBody').innerHTML = '<tr><td colspan="10" style="text-align:center;">لم يتم تحديد إدارة</td></tr>';
+        return;
+      }
+
+      let leaves;
+      if (session.is_hr) {
+        leaves = await fetchAllLeaves({ department: dept || 'all', status: filter });
+      } else {
+        leaves = await fetchDeptLeaves(dept, filter);
+      }
+
+      const stats = {
+        total: leaves.length,
+        pending: leaves.filter(l => l.status === 'pending').length,
+        approved: leaves.filter(l => l.status.includes('approved')).length
+      };
+      document.getElementById('statsArea').innerHTML =
+        '<div class="stat-card"><div class="num">' + stats.total + '</div><div class="lbl">إجمالي</div></div>' +
+        '<div class="stat-card"><div class="num">' + stats.pending + '</div><div class="lbl">معلق</div></div>' +
+        '<div class="stat-card"><div class="num">' + stats.approved + '</div><div class="lbl">معتمد</div></div>';
+
+      if (leaves.length === 0) {
+        document.getElementById('requestsBody').innerHTML = '<tr><td colspan="10" style="text-align:center;color:#999;">لا توجد طلبات</td></tr>';
+        return;
+      }
+
+      document.getElementById('requestsBody').innerHTML = leaves.map(l =>
+        '<tr style="' + (l.status === 'pending' ? 'background:#fffde7;' : '') + '">' +
+          '<td>' + l.id + '</td>' +
+          '<td><strong>' + l.full_name + '</strong><br><span style="font-size:11px;color:#666;">' + l.emp_code + '</span></td>' +
+          '<td>' + l.job_title + '</td>' +
+          '<td>' + leaveTypeAr(l.leave_type) + '</td>' +
+          '<td>' + formatDate(l.start_date) + ' → ' + formatDate(l.end_date) + '</td>' +
+          '<td>' + l.days_count + '</td>' +
+          '<td>' + (l.phone || '—') + '</td>' +
+          '<td style="font-size:12px;max-width:150px;overflow:hidden;">' + (l.reason || '—') + '</td>' +
+          '<td>' + statusBadge(l.status) + '</td>' +
+          '<td>' + getActionButtons(l) + '</td>' +
+        '</tr>'
+      ).join('');
+    }
+
+    function getActionButtons(l) {
+      if (l.status === 'pending') {
+        return '<button class="btn btn-success btn-sm" onclick="openModal(' + l.id + ',\'' + l.full_name + '\',\'' + l.leave_type + '\')">✓</button>';
+      }
+      if (l.status === 'approved_by_manager') {
+        return '<span style="font-size:11px;color:#2e7d32;">بانتظار HR</span>';
+      }
+      return '<span style="font-size:11px;color:#999;">—</span>';
+    }
+
+    function openModal(id, name, type) {
+      currentLeaveId = id;
+      document.getElementById('modalTitle').textContent = 'إجراء على طلب ' + name;
+      document.getElementById('modalInfo').textContent = type + ' - رقم ' + id;
+      document.getElementById('actionModal').style.display = 'flex';
+      document.getElementById('modalComment').value = '';
+    }
+
+    function closeModal() {
+      document.getElementById('actionModal').style.display = 'none';
+      currentLeaveId = null;
+    }
+
+    async function doApprove() {
+      if (!currentLeaveId) return;
+      const comment = document.getElementById('modalComment').value;
+      await updateLeaveStatus(currentLeaveId, 'approved_by_manager', comment, session.emp_code);
+      closeModal();
+      loadRequests();
+    }
+
+    async function doReject() {
+      if (!currentLeaveId) return;
+      const comment = document.getElementById('modalComment').value || 'مرفوض';
+      await updateLeaveStatus(currentLeaveId, 'rejected_by_manager', comment, session.emp_code);
+      closeModal();
+      loadRequests();
+    }
+  </script>
+</body>
+</html>

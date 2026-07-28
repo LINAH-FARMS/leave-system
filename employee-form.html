@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>تقديم إجازة</title>
+  <link rel="stylesheet" href="assets/styles.css">
+  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+  <script src="assets/supabase-client.js"></script>
+  <script src="assets/auth.js"></script>
+  <script src="assets/leave-utils.js"></script>
+</head>
+<body>
+  <div class="header">
+    <h1>🌿 تقديم إجازة</h1>
+    <div class="user-info" id="userInfo"></div>
+  </div>
+  <div class="container">
+    <div class="card" id="loginPrompt" style="display:none;text-align:center;padding:40px;">
+      <p style="font-size:18px;margin-bottom:15px;">🔒 يجب تسجيل الدخول أولاً</p>
+      <a href="employee-login.html" class="btn btn-primary">تسجيل الدخول</a>
+    </div>
+
+    <div id="formArea" style="display:none;">
+      <div class="stats">
+        <div class="stat-card"><div class="num" id="balanceDisplay">0</div><div class="lbl">رصيد الإجازات</div></div>
+        <div class="stat-card"><div class="num" id="pendingCount">0</div><div class="lbl">طلبات معلقة</div></div>
+      </div>
+
+      <div class="card">
+        <h2>📝 نموذج طلب إجازة</h2>
+        <div class="form-group">
+          <label>نوع الإجازة</label>
+          <select id="leaveType">
+            <option value="اعتيادية">إعتيادية</option>
+            <option value="امتداد">امتداد</option>
+            <option value="مأمورية">مأمورية</option>
+            <option value="مرضية">مرضية</option>
+            <option value="اضطرارية">اضطرارية</option>
+          </select>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:15px;">
+          <div class="form-group">
+            <label>📅 تاريخ البداية</label>
+            <input type="date" id="startDate" onchange="updateDays()">
+          </div>
+          <div class="form-group">
+            <label>📅 تاريخ النهاية</label>
+            <input type="date" id="endDate" onchange="updateDays()">
+          </div>
+        </div>
+        <div class="form-group">
+          <label>عدد الأيام: <span id="daysCount" style="font-weight:700;color:#2e7d32;">0</span></label>
+        </div>
+        <div class="form-group" id="travelGroup" style="display:none;">
+          <label>✈️ تاريخ السفر</label>
+          <input type="date" id="travelDate">
+        </div>
+        <div class="form-group">
+          <label>📱 رقم الموبايل</label>
+          <input type="text" id="phone" placeholder="رقم الموبايل للتواصل">
+        </div>
+        <div class="form-group">
+          <label>سبب الإجازة (اختياري)</label>
+          <textarea id="reason" rows="3" placeholder="اكتب سبب الإجازة"></textarea>
+        </div>
+        <button class="btn btn-success" onclick="submitRequest()">✅ تقديم الطلب</button>
+        <div id="submitMsg" style="margin-top:10px;"></div>
+      </div>
+
+      <div class="nav-bar">
+        <a href="employee-status.html" class="btn btn-outline btn-sm">📋 إجازاتي السابقة</a>
+        <a href="#" class="btn btn-outline btn-sm" onclick="logout()">🚪 خروج</a>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const session = requireAuth(['employee','manager','hr','any']);
+    if (session) {
+      document.getElementById('userInfo').textContent = session.name + ' | ' + session.department;
+      document.getElementById('formArea').style.display = 'block';
+      document.getElementById('balanceDisplay').textContent = session.leave_balance || 0;
+      loadPending();
+    } else {
+      document.getElementById('loginPrompt').style.display = 'block';
+    }
+
+    document.getElementById('leaveType').addEventListener('change', function() {
+      document.getElementById('travelGroup').style.display = this.value === 'امتداد' ? 'block' : 'none';
+    });
+
+    function updateDays() {
+      const s = document.getElementById('startDate').value;
+      const e = document.getElementById('endDate').value;
+      if (s && e) {
+        document.getElementById('daysCount').textContent = calcDays(s, e);
+      }
+    }
+
+    async function loadPending() {
+      const leaves = await fetchMyLeaves(session.emp_code);
+      const pending = leaves.filter(l => l.status === 'pending');
+      document.getElementById('pendingCount').textContent = pending.length;
+    }
+
+    async function submitRequest() {
+      const start = document.getElementById('startDate').value;
+      const end = document.getElementById('endDate').value;
+      const type = document.getElementById('leaveType').value;
+      const phone = document.getElementById('phone').value;
+      const reason = document.getElementById('reason').value;
+      const travel = document.getElementById('travelDate').value || '';
+      const msg = document.getElementById('submitMsg');
+
+      if (!start || !end) { msg.innerHTML = '<span style="color:#e53935;">✗ اختر تاريخ البداية والنهاية</span>'; return; }
+
+      const days = calcDays(start, end);
+      if (days <= 0) { msg.innerHTML = '<span style="color:#e53935;">✗ تاريخ النهاية يجب أن يكون بعد تاريخ البداية</span>'; return; }
+
+      if (days > (session.leave_balance || 999)) {
+        if (!confirm('⚠️ عدد الأيام (' + days + ') أكبر من رصيدك (' + session.leave_balance + '). هل تريد المتابعة؟')) return;
+      }
+
+      const btn = document.querySelector('.btn-success');
+      btn.disabled = true; btn.textContent = 'جاري الحفظ...';
+
+      const result = await submitLeave({
+        emp_code: session.emp_code,
+        full_name: session.name,
+        department: session.department,
+        job_title: session.job_title || '',
+        leave_type: type,
+        start_date: start,
+        end_date: end,
+        days_count: days,
+        travel_date: travel,
+        phone: phone,
+        reason: reason,
+        status: 'pending'
+      });
+
+      btn.disabled = false; btn.textContent = '✅ تقديم الطلب';
+
+      if (result.success) {
+        msg.innerHTML = '<span style="color:#2e7d32;">✅ تم تقديم الطلب بنجاح</span>';
+        document.getElementById('startDate').value = '';
+        document.getElementById('endDate').value = '';
+        document.getElementById('daysCount').textContent = '0';
+        document.getElementById('reason').value = '';
+        document.getElementById('phone').value = '';
+        loadPending();
+      } else {
+        msg.innerHTML = '<span style="color:#e53935;">✗ ' + result.message + '</span>';
+      }
+    }
+  </script>
+</body>
+</html>

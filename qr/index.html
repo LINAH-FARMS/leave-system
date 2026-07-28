@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>QR - إدارة الإجازات</title>
+  <link rel="stylesheet" href="../assets/styles.css">
+  <style>
+    .qr-page { max-width: 400px; margin: 20px auto; text-align: center; padding: 20px; }
+    .qr-page img { max-width: 300px; border-radius: 12px; box-shadow: 0 4px 16px rgba(0,0,0,0.1); }
+    .qr-page h2 { color: #1b5e20; margin: 15px 0 5px; }
+    .qr-page .sub { color: #666; font-size: 13px; margin-bottom: 20px; }
+    .qr-page .info { background: #f5faf5; border-radius: 10px; padding: 15px; margin: 20px 0; font-size: 13px; }
+    .qr-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 30px; padding: 20px; }
+    .qr-card { background: white; border-radius: 16px; padding: 25px; text-align: center; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
+    .qr-card img { max-width: 200px; border-radius: 8px; }
+    .qr-card h3 { margin: 10px 0; font-size: 16px; }
+    .qr-card .badge { display: inline-block; padding: 4px 14px; border-radius: 20px; color: white; font-size: 12px; margin: 5px 0; }
+    @media print { .no-print { display: none !important; } .qr-card { break-inside: avoid; } }
+  </style>
+</head>
+<body>
+  <div class="header no-print">
+    <h1>📱 QR Codes - نظام الإجازات</h1>
+    <div class="sub">اطبع هذه الصفحة أو كل QR على حدة</div>
+  </div>
+  <div class="container no-print">
+    <div class="nav-bar">
+      <a href="../index.html" class="btn btn-outline btn-sm">الرئيسية</a>
+      <button class="btn btn-primary btn-sm" onclick="window.print()">🖨️ طباعة الكل</button>
+    </div>
+  </div>
+
+  <div id="qrContent" style="padding:20px;">
+    <div style="text-align:center;padding:40px;color:#999;">جاري التحميل...</div>
+  </div>
+
+  <script>
+    const BASE_URL = window.location.origin + window.location.pathname.replace('/qr/', '/').replace(/\/[^/]*$/, '');
+    const DEPARTMENTS = ['زراعه', 'فنيه', 'مخازن', 'الشئون الاداريه', 'الموارد البشريه', 'امن', 'ميكنه'];
+    const COLORS = {
+      'زراعه': '#4CAF50', 'فنيه': '#2196F3', 'مخازن': '#FF9800',
+      'الشئون الاداريه': '#9C27B0', 'الموارد البشريه': '#E91E63', 'امن': '#607D8B', 'ميكنه': '#795548'
+    };
+    const QR_API = 'https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=';
+
+    function build() {
+      let html = '<div class="qr-grid">';
+
+      // Employee QR per department
+      for (const dept of DEPARTMENTS) {
+        const url = BASE_URL + '/index.html?role=employee&dept=' + encodeURIComponent(dept);
+        const color = COLORS[dept] || '#999';
+        html += '<div class="qr-card">' +
+          '<div class="badge" style="background:' + color + ';">👤 موظف</div>' +
+          '<h3>' + dept + '</h3>' +
+          '<img src="' + QR_API + encodeURIComponent(url) + '" alt="QR ' + dept + '">' +
+          '<p style="font-size:11px;color:#999;margin-top:8px;word-break:break-all;">' + url + '</p>' +
+          '</div>';
+      }
+
+      // Manager QR per department
+      for (const dept of DEPARTMENTS) {
+        const url = BASE_URL + '/index.html?role=manager&dept=' + encodeURIComponent(dept);
+        const color = COLORS[dept] || '#999';
+        html += '<div class="qr-card">' +
+          '<div class="badge" style="background:' + color + ';">👔 مدير</div>' +
+          '<h3>' + dept + '</h3>' +
+          '<img src="' + QR_API + encodeURIComponent(url) + '" alt="QR Manager ' + dept + '">' +
+          '<p style="font-size:11px;color:#999;margin-top:8px;word-break:break-all;">' + url + '</p>' +
+          '</div>';
+      }
+
+      // HR QR
+      const hrUrl = BASE_URL + '/index.html?role=hr';
+      html += '<div class="qr-card" style="border:2px solid #E91E63;">' +
+        '<div class="badge" style="background:#E91E63;">👑 الموارد البشرية</div>' +
+        '<h3>الموارد البشرية</h3>' +
+        '<img src="' + QR_API + encodeURIComponent(hrUrl) + '" alt="QR HR">' +
+        '<p style="font-size:11px;color:#999;margin-top:8px;word-break:break-all;">' + hrUrl + '</p>' +
+        '</div>';
+
+      html += '</div>';
+      document.getElementById('qrContent').innerHTML = html;
+    }
+
+    build();
+  </script>
+</body>
+</html>
