@@ -1,6 +1,39 @@
-const LS_LEAVES = 'ls_leave_requests';
-const LS_AUDIT = 'ls_leave_audit';
-const LS_EMPLOYEES = 'ls_employees';
+const DB_LEAVES = 'db_leave_requests';
+const DB_AUDIT = 'db_leave_audit';
+const DB_EMPLOYEES = 'db_employees_ext';
+
+// IndexedDB wrapper
+let _idb = null;
+function dbOpen() {
+  if (_idb) return Promise.resolve(_idb);
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open('LeaveSystemDB', 1);
+    req.onupgradeneeded = e => {
+      const db = e.target.result;
+      if (!db.objectStoreNames.contains('kv')) db.createObjectStore('kv');
+    };
+    req.onsuccess = e => { _idb = e.target.result; resolve(_idb); };
+    req.onerror = e => reject(e.target.error);
+  });
+}
+async function dbGet(key) {
+  const db = await dbOpen();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction('kv', 'readonly');
+    const req = tx.objectStore('kv').get(key);
+    req.onsuccess = () => resolve(req.result || []);
+    req.onerror = () => reject(req.error);
+  });
+}
+async function dbSet(key, val) {
+  const db = await dbOpen();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction('kv', 'readwrite');
+    const req = tx.objectStore('kv').put(val, key);
+    req.onsuccess = () => resolve();
+    req.onerror = () => reject(req.error);
+  });
+}
 
 function formatDate(d) {
   if (!d) return '';
@@ -17,14 +50,6 @@ function calcDays(start, end) {
   return Math.max(0, Math.ceil((e - s) / (1000*60*60*24)) + 1);
 }
 
-function lsGet(key) {
-  try { return JSON.parse(localStorage.getItem(key) || '[]'); } catch { return []; }
-}
-
-function lsSet(key, data) {
-  localStorage.setItem(key, JSON.stringify(data));
-}
-
 async function submitLeave(data) {
   data.id = Date.now() + '_' + Math.random().toString(36).slice(2, 8);
   data.created_at = new Date().toISOString();
@@ -38,18 +63,18 @@ async function submitLeave(data) {
   } catch (e) { err = e; }
 
   if (err) {
-    const leaves = lsGet(LS_LEAVES);
+    const leaves = await dbGet(DB_LEAVES);
     leaves.push(data);
-    lsSet(LS_LEAVES, leaves);
+    await dbSet(DB_LEAVES, leaves);
   }
 
   const audit = { leave_id: data.id, emp_code: data.emp_code, action: 'submitted', comment: 'تقديم إجازة ' + data.leave_type, created_at: new Date().toISOString() };
   try {
     await supabase.from('leave_audit').insert([audit]);
   } catch (_) {
-    const audits = lsGet(LS_AUDIT);
+    const audits = await dbGet(DB_AUDIT);
     audits.push(audit);
-    lsSet(LS_AUDIT, audits);
+    await dbSet(DB_AUDIT, audits);
   }
 
   return { success: true };
@@ -63,7 +88,7 @@ async function fetchMyLeaves(empCode) {
       .order('created_at', { ascending: false });
     if (!error && data) return data;
   } catch (_) {}
-  const all = lsGet(LS_LEAVES);
+  const all = await dbGet(DB_LEAVES);
   return all.filter(l => l.emp_code == empCode).sort((a, b) => b.created_at.localeCompare(a.created_at));
 }
 
@@ -74,7 +99,7 @@ async function fetchDeptLeaves(department, statusFilter) {
     const { data } = q.order('created_at', { ascending: false });
     if (data) return data;
   } catch (_) {}
-  const all = lsGet(LS_LEAVES);
+  const all = await dbGet(DB_LEAVES);
   let filtered = all.filter(l => l.department === department);
   if (statusFilter && statusFilter !== 'all') filtered = filtered.filter(l => l.status === statusFilter);
   return filtered.sort((a, b) => b.created_at.localeCompare(a.created_at));
@@ -93,7 +118,7 @@ async function fetchAllLeaves(filters) {
     const { data } = q.order('created_at', { ascending: false });
     if (data) return data;
   } catch (_) {}
-  let all = lsGet(LS_LEAVES);
+  let all = await dbGet(DB_LEAVES);
   if (filters) {
     if (filters.department && filters.department !== 'all') all = all.filter(l => l.department === filters.department);
     if (filters.status && filters.status !== 'all') all = all.filter(l => l.status === filters.status);
@@ -117,11 +142,11 @@ async function updateLeaveStatus(leaveId, status, comment, reviewer) {
   } catch (e) { err = e; }
 
   if (err) {
-    const leaves = lsGet(LS_LEAVES);
+    const leaves = await dbGet(DB_LEAVES);
     const idx = leaves.findIndex(l => l.id === leaveId);
     if (idx >= 0) {
       Object.assign(leaves[idx], update);
-      lsSet(LS_LEAVES, leaves);
+      await dbSet(DB_LEAVES, leaves);
     }
   }
 
@@ -129,9 +154,9 @@ async function updateLeaveStatus(leaveId, status, comment, reviewer) {
   try {
     await supabase.from('leave_audit').insert([audit]);
   } catch (_) {
-    const audits = lsGet(LS_AUDIT);
+    const audits = await dbGet(DB_AUDIT);
     audits.push(audit);
-    lsSet(LS_AUDIT, audits);
+    await dbSet(DB_AUDIT, audits);
   }
 
   return { success: true };
@@ -160,8 +185,8 @@ function leaveTypeAr(type) {
   return map[type] || type;
 }
 
-// Employee Management (localStorage-backed)
-function getAllEmployees() {
+// Employee Management (IndexedDB-backed)
+async function getAllEmployees() {
   const base = EMPLOYEES_DATA.map(e => ({
     emp_code: e.c, password_hash: e.p, full_name: e.n,
     job_title: e.j, department: e.d, hire_date: e.h,
@@ -171,17 +196,17 @@ function getAllEmployees() {
     is_hr: HR_EMP_CODES.includes(e.c),
     is_active: true, _source: 'base'
   }));
-  const added = lsGet('ls_employees_ext').filter(e => !e._deleted);
-  return [...base, ...added].sort((a, b) => a.emp_code - b.emp_code);
+  const added = await dbGet(DB_EMPLOYEES);
+  return [...base, ...added.filter(e => !e._deleted)].sort((a, b) => a.emp_code - b.emp_code);
 }
 
-function getLocalEmployee(code) {
-  const added = lsGet('ls_employees_ext');
+async function getLocalEmployee(code) {
+  const added = await dbGet(DB_EMPLOYEES);
   return added.find(e => e.emp_code === code && !e._deleted) || null;
 }
 
-function addLocalEmployee(data) {
-  const added = lsGet('ls_employees_ext');
+async function addLocalEmployee(data) {
+  const added = await dbGet(DB_EMPLOYEES);
   if (added.find(e => e.emp_code === data.emp_code && !e._deleted)) {
     return { success: false, message: 'كود وظيفي موجود بالفعل' };
   }
@@ -191,14 +216,12 @@ function addLocalEmployee(data) {
   data._source = 'local';
   data.password_hash = hashPassword(data.password_hash || '123456');
   added.push(data);
-  lsSet('ls_employees_ext', added);
-  // Update EMPLOYEES_DATA fallback for auth
-  const meta = document.createElement('meta');
+  await dbSet(DB_EMPLOYEES, added);
   return { success: true };
 }
 
-function updateLocalEmployee(code, updates) {
-  const added = lsGet('ls_employees_ext');
+async function updateLocalEmployee(code, updates) {
+  const added = await dbGet(DB_EMPLOYEES);
   const idx = added.findIndex(e => e.emp_code === code && !e._deleted);
   if (idx < 0) return { success: false, message: 'الموظف غير موجود' };
   if (updates.password) {
@@ -206,19 +229,18 @@ function updateLocalEmployee(code, updates) {
     delete updates.password;
   }
   Object.assign(added[idx], updates);
-  lsSet('ls_employees_ext', added);
+  await dbSet(DB_EMPLOYEES, added);
   return { success: true };
 }
 
-function deleteLocalEmployee(code) {
-  const added = lsGet('ls_employees_ext');
+async function deleteLocalEmployee(code) {
+  const added = await dbGet(DB_EMPLOYEES);
   const idx = added.findIndex(e => e.emp_code === code && !e._deleted);
   if (idx >= 0) {
     added[idx]._deleted = true;
-    lsSet('ls_employees_ext', added);
+    await dbSet(DB_EMPLOYEES, added);
     return { success: true };
   }
-  // Can't delete base employees from frontend
   if (EMPLOYEES_DATA.find(e => e.c === code)) {
     return { success: false, message: 'لا يمكن حذف موظف أساسي من هنا. استخدم Supabase Dashboard' };
   }
@@ -227,8 +249,9 @@ function deleteLocalEmployee(code) {
 
 async function syncEmployeesToSupabase() {
   try {
-    const added = lsGet('ls_employees_ext').filter(e => !e._deleted && e._source === 'local');
-    for (const emp of added) {
+    const added = await dbGet(DB_EMPLOYEES);
+    const locals = added.filter(e => !e._deleted && e._source === 'local');
+    for (const emp of locals) {
       const { error } = await supabase.from('employees').upsert([{
         emp_code: emp.emp_code, password_hash: emp.password_hash,
         full_name: emp.full_name, job_title: emp.job_title,
@@ -244,3 +267,20 @@ async function syncEmployeesToSupabase() {
     return { success: false, message: 'Supabase غير متاح' };
   }
 }
+// Migrate from localStorage to IndexedDB on first load
+(async function migrateFromLS() {
+  try {
+    for (const key of ['ls_leave_requests', 'ls_leave_audit', 'ls_employees_ext']) {
+      const ls = localStorage.getItem(key);
+      if (ls) {
+        const data = JSON.parse(ls);
+        const dbKey = key === 'ls_leave_requests' ? DB_LEAVES : key === 'ls_leave_audit' ? DB_AUDIT : DB_EMPLOYEES;
+        const existing = await dbGet(dbKey);
+        if (existing.length === 0 && data.length > 0) {
+          await dbSet(dbKey, data);
+        }
+        localStorage.removeItem(key);
+      }
+    }
+  } catch (_) {}
+})();

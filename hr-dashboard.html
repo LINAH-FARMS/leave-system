@@ -439,9 +439,9 @@
     }
 
     // ===== EMPLOYEE MANAGEMENT =====
-    function loadEmployees() {
+    async function loadEmployees() {
       const search = (document.getElementById('empSearch').value || '').trim();
-      const all = getAllEmployees();
+      const all = await getAllEmployees();
       const filtered = search ? all.filter(e =>
         e.full_name.includes(search) || String(e.emp_code).includes(search)
       ) : all;
@@ -487,7 +487,7 @@
       document.getElementById('addEmpModal').style.display = 'flex';
     }
 
-    function addEmployee() {
+    async function addEmployee() {
       const code = parseInt(document.getElementById('addEmpCode').value);
       const name = document.getElementById('addEmpName').value.trim();
       const dept = document.getElementById('addEmpDept').value;
@@ -495,7 +495,7 @@
 
       if (!code || !name) { msg.innerHTML = '<span style="color:#e53935;">✗ الكود والاسم مطلوبان</span>'; return; }
 
-      const result = addLocalEmployee({
+      const result = await addLocalEmployee({
         emp_code: code,
         full_name: name,
         job_title: document.getElementById('addEmpJob').value.trim(),
@@ -516,8 +516,8 @@
       }
     }
 
-    function openEditEmpModal(code) {
-      const all = getAllEmployees();
+    async function openEditEmpModal(code) {
+      const all = await getAllEmployees();
       const emp = all.find(e => e.emp_code === code);
       if (!emp) return;
 
@@ -536,7 +536,7 @@
       document.getElementById('editEmpModal').style.display = 'flex';
     }
 
-    function saveEditEmployee() {
+    async function saveEditEmployee() {
       const code = parseInt(document.getElementById('editEmpCode').value);
       const name = document.getElementById('editEmpName').value.trim();
       const msg = document.getElementById('editEmpMsg');
@@ -558,7 +558,7 @@
       const pass = document.getElementById('editEmpPass').value.trim();
       if (pass) updates.password = pass;
 
-      const result = updateLocalEmployee(code, updates);
+      const result = await updateLocalEmployee(code, updates);
       if (result.success) {
         msg.innerHTML = '<span style="color:#2e7d32;">✅ تم حفظ التعديلات</span>';
         setTimeout(() => { closeModal('editEmpModal'); loadEmployees(); }, 800);
@@ -567,9 +567,9 @@
       }
     }
 
-    function deleteEmp(code) {
+    async function deleteEmp(code) {
       if (!confirm('⚠️ هل أنت متأكد من حذف هذا الموظف؟')) return;
-      const result = deleteLocalEmployee(code);
+      const result = await deleteLocalEmployee(code);
       if (result.success) {
         loadEmployees();
       } else {

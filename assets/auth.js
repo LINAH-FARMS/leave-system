@@ -30,7 +30,7 @@ async function login(empCode, password) {
     let local = EMPLOYEES_DATA.find(e => e.c === code);
     if (!local) {
       try {
-        const added = JSON.parse(localStorage.getItem('ls_employees_ext') || '[]');
+        const added = await dbGet('db_employees_ext');
         const a = added.find(e => e.emp_code === code && !e._deleted);
         if (a) {
           empData = {
