@@ -95,11 +95,26 @@
   </div>
 
   <script>
-    const session = requireAuth(['any']);
+    let session = requireAuth(['any']);
     let currentLeaveId = null;
+    const urlParams = new URLSearchParams(window.location.search);
+    const deptFromUrl = urlParams.get('dept');
+
+    // QR-direct access: create virtual session if dept param and no real session
+    if (!session && deptFromUrl) {
+      session = {
+        emp_code: 'qr_' + deptFromUrl.replace(/\s/g, '_'),
+        name: 'مدير ' + deptFromUrl,
+        department: deptFromUrl,
+        is_manager: true,
+        managed_dept: deptFromUrl,
+        is_hr: false,
+        leave_balance: 0
+      };
+    }
 
     if (session) {
-      const dept = new URLSearchParams(window.location.search).get('dept') || session.managed_dept || session.department;
+      const dept = deptFromUrl || session.managed_dept || session.department;
       const isAuthorized = session.is_manager || session.is_hr;
 
       if (!isAuthorized) {

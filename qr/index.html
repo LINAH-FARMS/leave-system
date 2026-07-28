@@ -61,7 +61,7 @@
 
       // Manager QR per department
       for (const dept of DEPARTMENTS) {
-        const url = BASE_URL + '/index.html?role=manager&dept=' + encodeURIComponent(dept);
+        const url = BASE_URL + '/manager-dashboard.html?dept=' + encodeURIComponent(dept);
         const color = COLORS[dept] || '#999';
         html += '<div class="qr-card">' +
           '<div class="badge" style="background:' + color + ';">👔 مدير</div>' +

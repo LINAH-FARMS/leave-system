@@ -705,7 +705,7 @@
       // Manager QRs per department
       html += '<div class="qr-section"><h3>👔 مديري الإدارات</h3><div class="qr-grid">';
       for (const dept of QR_DEPARTMENTS) {
-        const url = base + '/employee-login.html?dept=' + encodeURIComponent(dept);
+        const url = base + '/manager-dashboard.html?dept=' + encodeURIComponent(dept);
         html += '<div class="qr-card">' +
           '<div class="badge" style="background:' + (colors[dept]||'#999') + ';">' + dept + '</div>' +
           '<img src="' + api + encodeURIComponent(url) + '" alt="QR Manager ' + dept + '" loading="lazy">' +

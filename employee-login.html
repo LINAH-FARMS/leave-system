@@ -35,6 +35,12 @@
     const params = new URLSearchParams(window.location.search);
     const dept = params.get('dept') || '';
 
+    // QR-direct access: redirect to manager dashboard without login
+    if (dept && !params.get('mode')) {
+      window.location.href = 'manager-dashboard.html?dept=' + encodeURIComponent(dept);
+      // stop execution after redirect
+    }
+
     async function doLogin() {
       const code = document.getElementById('empCode').value.trim();
       const pw = document.getElementById('password').value;
