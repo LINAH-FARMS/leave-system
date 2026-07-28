@@ -21,7 +21,7 @@
         <div id="role-badge" style="margin-bottom:20px;"></div>
         <a href="employee-login.html" class="btn btn-primary" style="width:100%;margin-bottom:8px;">دخول الموظف</a>
         <a href="manager-dashboard.html" class="btn btn-outline" style="width:100%;margin-bottom:8px;">دخول المدير</a>
-        <a href="hr-dashboard.html" class="btn btn-outline" style="width:100%;">دخول الموارد البشرية</a>
+        <a href="hr-dashboard.html" class="btn btn-outline" style="width:100%;">دخول مدير التطبيق</a>
       </div>
       <div style="margin-top:25px;padding-top:20px;border-top:1px solid #eee;font-size:12px;color:#999;">
         QR Code: <span id="qr-param">—</span>
@@ -50,7 +50,7 @@
       document.querySelector('a[href="hr-dashboard.html"]').style.display = 'none';
     } else if (role === 'hr') {
       document.getElementById('role-badge').innerHTML =
-        '<span style="background:#fce4ec;padding:8px 20px;border-radius:20px;color:#c62828;">👑 الموارد البشرية</span>';
+        '<span style="background:#fce4ec;padding:8px 20px;border-radius:20px;color:#c62828;">👑 مدير التطبيق</span>';
       document.querySelector('a[href="employee-login.html"]').style.display = 'none';
       document.querySelector('a[href="manager-dashboard.html"]').style.display = 'none';
       document.querySelector('a[href="hr-dashboard.html"]').href = 'hr-dashboard.html';
