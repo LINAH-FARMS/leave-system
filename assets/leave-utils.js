@@ -189,7 +189,11 @@ function leaveTypeAr(type) {
 // Employee Management (IndexedDB-backed)
 async function getAllEmployees() {
   const overrides = await getPermOverrides();
-  const base = EMPLOYEES_DATA.map(e => {
+  const added = await dbGet(DB_EMPLOYEES);
+  const addedActive = added.filter(e => !e._deleted);
+  const addedCodes = new Set(addedActive.map(e => e.emp_code));
+
+  const base = EMPLOYEES_DATA.filter(e => !addedCodes.has(e.c)).map(e => {
     const o = overrides[e.c];
     return {
       emp_code: e.c, password_hash: e.p, full_name: e.n,
@@ -201,8 +205,18 @@ async function getAllEmployees() {
       is_active: true, _source: 'base'
     };
   });
-  const added = await dbGet(DB_EMPLOYEES);
-  return [...base, ...added.filter(e => !e._deleted)].sort((a, b) => a.emp_code - b.emp_code);
+
+  const mappedAdded = addedActive.map(e => {
+    const o = overrides[e.emp_code];
+    if (o) {
+      if (o.is_manager !== undefined) e.is_manager = o.is_manager;
+      if (o.managed_dept !== undefined) e.managed_dept = o.managed_dept;
+      if (o.is_hr !== undefined) e.is_hr = o.is_hr;
+    }
+    return e;
+  });
+
+  return [...base, ...mappedAdded].sort((a, b) => a.emp_code - b.emp_code);
 }
 
 async function getLocalEmployee(code) {
@@ -227,8 +241,19 @@ async function addLocalEmployee(data) {
 
 async function updateLocalEmployee(code, updates) {
   const added = await dbGet(DB_EMPLOYEES);
-  const idx = added.findIndex(e => e.emp_code === code && !e._deleted);
-  if (idx < 0) return { success: false, message: 'الموظف غير موجود' };
+  let idx = added.findIndex(e => e.emp_code === code && !e._deleted);
+  if (idx < 0) {
+    const base = EMPLOYEES_DATA.find(e => e.c === code);
+    if (!base) return { success: false, message: 'الموظف غير موجود' };
+    added.push({
+      emp_code: code, password_hash: base.p, full_name: base.n,
+      job_title: base.j, department: base.d, hire_date: base.h,
+      leave_balance: base.b, monthly_balance: base.m,
+      is_manager: !!MANAGER_DEPT_CODES[base.c], managed_dept: MANAGER_DEPT_CODES[base.c] || null,
+      is_hr: HR_EMP_CODES.includes(base.c), is_active: true, _source: 'base_override'
+    });
+    idx = added.length - 1;
+  }
   if (updates.password) {
     updates.password_hash = hashPassword(updates.password);
     delete updates.password;

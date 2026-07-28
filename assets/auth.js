@@ -45,20 +45,42 @@ async function login(empCode, password) {
       } catch (_) {}
       if (!empData) return { success: false, message: '✗ كود وظيفي غير صحيح' };
     } else {
-      const overrides = typeof PERM_OVERRIDES !== 'undefined' ? PERM_OVERRIDES : {};
+      // Check for base overrides in IndexedDB
       try {
-        const stored = await dbGet('db_perm_overrides');
-        Object.assign(overrides, stored);
+        const added = await dbGet('db_employees_ext');
+        const a = added.find(e => e.emp_code === code && e._source === 'base_override' && !e._deleted);
+        if (a) {
+          const o2 = typeof PERM_OVERRIDES !== 'undefined' ? PERM_OVERRIDES : {};
+          try { Object.assign(o2, await dbGet('db_perm_overrides')); } catch (_) {}
+          const po = o2[a.emp_code];
+          empData = {
+            emp_code: a.emp_code, password_hash: a.password_hash || a.p,
+            full_name: a.full_name || a.n, job_title: a.job_title || a.j,
+            department: a.department || a.d, hire_date: a.hire_date || a.h,
+            leave_balance: a.leave_balance ?? a.b, monthly_balance: a.monthly_balance ?? a.m,
+            is_manager: po ? po.is_manager : (a.is_manager !== undefined ? a.is_manager : !!MANAGER_DEPT_CODES[a.emp_code]),
+            managed_dept: po ? (po.managed_dept || null) : (a.managed_dept || MANAGER_DEPT_CODES[a.emp_code] || null),
+            is_hr: po ? po.is_hr : (a.is_hr !== undefined ? a.is_hr : HR_EMP_CODES.includes(a.emp_code)),
+            is_active: a.is_active !== false
+          };
+        }
       } catch (_) {}
-      const o = overrides[local.c];
-      empData = {
-        emp_code: local.c, password_hash: local.p, full_name: local.n,
-        job_title: local.j, department: local.d, hire_date: local.h,
-        leave_balance: local.b, monthly_balance: local.m,
-        is_manager: o ? o.is_manager : !!MANAGER_DEPT_CODES[local.c],
-        managed_dept: o ? (o.managed_dept || null) : (MANAGER_DEPT_CODES[local.c] || null),
-        is_hr: o ? o.is_hr : HR_EMP_CODES.includes(local.c), is_active: true
-      };
+      if (!empData) {
+        const overrides = typeof PERM_OVERRIDES !== 'undefined' ? PERM_OVERRIDES : {};
+        try {
+          const stored = await dbGet('db_perm_overrides');
+          Object.assign(overrides, stored);
+        } catch (_) {}
+        const o = overrides[local.c];
+        empData = {
+          emp_code: local.c, password_hash: local.p, full_name: local.n,
+          job_title: local.j, department: local.d, hire_date: local.h,
+          leave_balance: local.b, monthly_balance: local.m,
+          is_manager: o ? o.is_manager : !!MANAGER_DEPT_CODES[local.c],
+          managed_dept: o ? (o.managed_dept || null) : (MANAGER_DEPT_CODES[local.c] || null),
+          is_hr: o ? o.is_hr : HR_EMP_CODES.includes(local.c), is_active: true
+        };
+      }
     }
   }
 
