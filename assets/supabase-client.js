@@ -3,13 +3,10 @@ var SUPABASE_URL = 'https://idejmgmftmrniviftcce.supabase.co';
 var SUPABASE_ANON_KEY = 'sb_publishable_AvMTa-zmQ4hgA1hJNpYc3g_gu8rlirz';
 
 var supabase = (function() {
-  var baseHeaders = {
-    'apikey': SUPABASE_ANON_KEY,
-    'Content-Type': 'application/json'
-  };
 
   function buildUrl(table, filters, order) {
     var params = [];
+    params.push('apikey=' + encodeURIComponent(SUPABASE_ANON_KEY));
     if (filters.select) params.push('select=' + filters.select);
     for (var key in filters) {
       if (key === 'select') continue;
@@ -29,11 +26,12 @@ var supabase = (function() {
 
     function exec() {
       var url = buildUrl(table, filters, orderClause);
-      var h = {};
-      for (var k in baseHeaders) h[k] = baseHeaders[k];
-      if (method !== 'GET') h['Prefer'] = 'return=minimal';
-      var opts = { method: method, headers: h };
-      if (bodyData) opts.body = JSON.stringify(bodyData);
+      var opts = { method: method, headers: {} };
+      if (bodyData) {
+        opts.headers['Content-Type'] = 'application/json';
+        opts.body = JSON.stringify(bodyData);
+        if (method !== 'GET') opts.headers['Prefer'] = 'return=minimal';
+      }
       return fetch(url, opts).then(function(r) {
         return r.json().then(function(d) {
           if (!r.ok) return { data: null, error: { message: r.statusText, details: d } };
