@@ -28,6 +28,14 @@
     .search-box { width:100%; padding:10px 14px; border:2px solid #e0e0e0; border-radius:8px; font-family:inherit; font-size:14px; margin-bottom:15px; }
     .search-box:focus { border-color:#4caf50; outline:none; }
     .inline-flex { display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+    .qr-grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:20px; }
+    .qr-card { background:white; border-radius:12px; padding:20px; text-align:center; box-shadow:0 2px 12px rgba(0,0,0,0.08); }
+    .qr-card img { max-width:180px; border-radius:8px; }
+    .qr-card h3 { margin:10px 0; font-size:15px; color:#333; }
+    .qr-card .badge { display:inline-block; padding:3px 12px; border-radius:16px; color:white; font-size:11px; margin:5px 0; }
+    .qr-card .url { font-size:10px; color:#999; word-break:break-all; margin-top:6px; }
+    .qr-section { margin-bottom:30px; }
+    .qr-section h3 { color:#1b5e20; margin-bottom:15px; font-size:16px; }
   </style>
 </head>
 <body>
@@ -49,6 +57,7 @@
       <div class="tabs">
         <button class="tab active" onclick="switchTab('leaves')">📋 طلبات الإجازات</button>
         <button class="tab" onclick="switchTab('employees')">👥 إدارة الموظفين</button>
+        <button class="tab" onclick="switchTab('qr')">📱 رموز QR</button>
       </div>
 
       <!-- TAB: Leaves -->
@@ -154,6 +163,18 @@
               </tbody>
             </table>
           </div>
+        </div>
+      </div>
+
+      <!-- TAB: QR Codes -->
+      <div class="tab-content" id="tabQr">
+        <div class="card">
+          <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:15px;">
+            <h2 style="margin:0;">📱 رموز QR للدخول السريع</h2>
+            <button class="btn btn-primary btn-sm" onclick="window.print()">🖨️ طباعة</button>
+          </div>
+          <p style="color:#666;font-size:13px;margin-bottom:20px;">امسح الرمز للدخول مباشرة دون كتابة بيانات — كل قسم له رمز خاص به</p>
+          <div id="qrContent"></div>
         </div>
       </div>
 
@@ -333,13 +354,20 @@
     function switchTab(tab) {
       document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
       document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-      if (tab === 'leaves') {
-        document.querySelectorAll('.tab')[0].classList.add('active');
+      const tabs = ['leaves', 'employees', 'qr'];
+      const idx = tabs.indexOf(tab);
+      if (idx >= 0) {
+        document.querySelectorAll('.tab')[idx].classList.add('active');
         document.getElementById('tabLeaves').classList.add('active');
-      } else {
-        document.querySelectorAll('.tab')[1].classList.add('active');
-        document.getElementById('tabEmployees').classList.add('active');
-        loadEmployees();
+        if (tab === 'leaves') {
+          document.getElementById('tabLeaves').classList.add('active');
+        } else if (tab === 'employees') {
+          document.getElementById('tabEmployees').classList.add('active');
+          loadEmployees();
+        } else if (tab === 'qr') {
+          document.getElementById('tabQr').classList.add('active');
+          buildQRCodes();
+        }
       }
     }
 
@@ -575,6 +603,52 @@
       } else {
         alert('✗ ' + result.message);
       }
+    }
+
+    // ===== QR CODES =====
+    const QR_DEPARTMENTS = ['زراعه', 'فنيه', 'مخازن', 'الشئون الاداريه', 'الموارد البشريه', 'امن', 'ميكنه'];
+    let _qrBuilt = false;
+
+    function buildQRCodes() {
+      if (_qrBuilt) return;
+      _qrBuilt = true;
+      const base = window.location.origin + window.location.pathname.replace(/\/[^/]*$/, '');
+      const api = 'https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=';
+      const colors = {'زراعه':'#4CAF50','فنيه':'#2196F3','مخازن':'#FF9800','الشئون الاداريه':'#9C27B0','الموارد البشريه':'#E91E63','امن':'#607D8B','ميكنه':'#795548'};
+      let html = '';
+
+      // Employee QRs
+      html += '<div class="qr-section"><h3>👤 موظفين — كل إدارة</h3><div class="qr-grid">';
+      for (const dept of QR_DEPARTMENTS) {
+        const url = base + '/index.html?role=employee&dept=' + encodeURIComponent(dept);
+        html += '<div class="qr-card">' +
+          '<div class="badge" style="background:' + (colors[dept]||'#999') + ';">' + dept + '</div>' +
+          '<img src="' + api + encodeURIComponent(url) + '" alt="QR ' + dept + '" loading="lazy">' +
+          '<div class="url">' + url + '</div></div>';
+      }
+      html += '</div></div>';
+
+      // Manager QRs
+      html += '<div class="qr-section"><h3>👔 مدراء — كل إدارة</h3><div class="qr-grid">';
+      for (const dept of QR_DEPARTMENTS) {
+        const url = base + '/index.html?role=manager&dept=' + encodeURIComponent(dept);
+        html += '<div class="qr-card">' +
+          '<div class="badge" style="background:' + (colors[dept]||'#999') + ';">مدير ' + dept + '</div>' +
+          '<img src="' + api + encodeURIComponent(url) + '" alt="QR Manager ' + dept + '" loading="lazy">' +
+          '<div class="url">' + url + '</div></div>';
+      }
+      html += '</div></div>';
+
+      // HR QR
+      const hrUrl = base + '/index.html?role=hr';
+      html += '<div class="qr-section"><h3>👑 الموارد البشرية</h3><div class="qr-grid">' +
+        '<div class="qr-card" style="border:2px solid #E91E63;">' +
+        '<div class="badge" style="background:#E91E63;">HR</div>' +
+        '<h3 style="color:#333;">الموارد البشرية</h3>' +
+        '<img src="' + api + encodeURIComponent(hrUrl) + '" alt="QR HR" loading="lazy">' +
+        '<div class="url">' + hrUrl + '</div></div></div></div>';
+
+      document.getElementById('qrContent').innerHTML = html;
     }
 
     // ===== EXPORT =====

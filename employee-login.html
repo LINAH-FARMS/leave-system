@@ -32,7 +32,9 @@
     </div>
   </div>
   <script>
-    const dept = new URLSearchParams(window.location.search).get('dept') || '';
+    const params = new URLSearchParams(window.location.search);
+    const dept = params.get('dept') || '';
+    const role = params.get('role') || 'employee';
 
     async function doLogin() {
       const code = document.getElementById('empCode').value.trim();
@@ -48,7 +50,9 @@
         return;
       }
 
-      window.location.href = 'employee-form.html' + (dept ? '?dept=' + encodeURIComponent(dept) : '');
+      const targets = { employee: 'employee-form.html', manager: 'manager-dashboard.html', hr: 'hr-dashboard.html' };
+      const target = targets[role] || 'employee-form.html';
+      window.location.href = target + (dept ? '?dept=' + encodeURIComponent(dept) : '');
     }
 
     document.getElementById('password').addEventListener('keypress', function(e) {
