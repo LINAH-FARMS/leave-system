@@ -100,11 +100,12 @@
     const urlParams = new URLSearchParams(window.location.search);
     const deptFromUrl = urlParams.get('dept');
 
-    // QR-direct access: create virtual session if dept param and no real session
-    if (!session && deptFromUrl) {
+    // QR-direct access: anonymous session from dept param only
+    const isQrAccess = !session && deptFromUrl;
+    if (isQrAccess) {
       session = {
         emp_code: 'qr_' + deptFromUrl.replace(/\s/g, '_'),
-        name: 'مدير ' + deptFromUrl,
+        name: '',
         department: deptFromUrl,
         is_manager: true,
         managed_dept: deptFromUrl,
@@ -122,7 +123,11 @@
         document.getElementById('dashboardArea').style.display = 'none';
       } else {
         document.getElementById('dashboardArea').style.display = 'block';
-        document.getElementById('userInfo').textContent = session.name + ' | مدير ' + (dept || '');
+        if (isQrAccess) {
+          document.getElementById('userInfo').textContent = '👔 مدير ' + dept;
+        } else {
+          document.getElementById('userInfo').textContent = session.name + ' | مدير ' + (dept || '');
+        }
         document.getElementById('deptName').textContent = dept;
         // Store dept for later use
         window.managerDept = dept;
