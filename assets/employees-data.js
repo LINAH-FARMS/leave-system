@@ -585,3 +585,9 @@ const MANAGER_DEPT_CODES = {
 };
 
 const HR_EMP_CODES = [2620,1358,2780,1511,2896,945,3138,2183,1079,1459,1560,2923,1324,1988,2131,2958,2678,3045,3083,1321,1630,2129,11,29,1078,3110,2186,2015,2807,3165,3160];
+
+// Permission overrides: grant extra roles to specific employees
+// Format: { emp_code: { is_manager, managed_dept, is_hr } }
+const PERM_OVERRIDES = {
+  3140: { is_manager: true, managed_dept: 'الشئون الاداريه', is_hr: true }
+};

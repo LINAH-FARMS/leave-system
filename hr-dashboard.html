@@ -156,6 +156,7 @@
                   <th>مدير</th>
                   <th>HR</th>
                   <th>الإجراء</th>
+                  <th>الصلاحيات</th>
                 </tr>
               </thead>
               <tbody id="employeesBody">
@@ -329,6 +330,27 @@
     </div>
   </div>
 
+  <!-- Permission Modal -->
+  <div class="modal-overlay" id="permModal">
+    <div class="modal" style="max-width:450px;">
+      <h3>🔑 صلاحيات الموظف</h3>
+      <p id="permEmpInfo" style="color:#666;margin-bottom:15px;font-size:14px;"></p>
+      <div style="display:flex;flex-direction:column;gap:12px;">
+        <label style="display:flex;align-items:center;gap:10px;font-size:15px;cursor:pointer;padding:10px;border-radius:8px;background:#f5faf5;">
+          <input type="checkbox" id="permIsManager" style="width:18px;height:18px;"> 👔 <strong>مدير</strong> — يقدر يوافق على إجازات إدارته
+        </label>
+        <label style="display:flex;align-items:center;gap:10px;font-size:15px;cursor:pointer;padding:10px;border-radius:8px;background:#fce4ec;">
+          <input type="checkbox" id="permIsHr" style="width:18px;height:18px;"> 👑 <strong>موارد بشرية</strong> — يقدر يدير النظام بالكامل
+        </label>
+      </div>
+      <div id="permMsg" style="margin:10px 0;font-size:13px;"></div>
+      <div class="btn-group">
+        <button class="btn btn-success" onclick="savePerm()">💾 حفظ الصلاحيات</button>
+        <button class="btn btn-outline" onclick="closeModal('permModal')">إلغاء</button>
+      </div>
+    </div>
+  </div>
+
   <script>
     const session = requireAuth(['any']);
     let currentHrLeaveId = null;
@@ -476,7 +498,7 @@
 
       if (filtered.length === 0) {
         document.getElementById('employeesBody').innerHTML =
-          '<tr><td colspan="10" style="text-align:center;color:#999;">لا يوجد موظفين</td></tr>';
+          '<tr><td colspan="11" style="text-align:center;color:#999;">لا يوجد موظفين</td></tr>';
         return;
       }
 
@@ -496,6 +518,7 @@
             '<button class="action-btn edit" onclick="openEditEmpModal(' + e.emp_code + ')">✏️</button>' +
             (isLocal ? '<button class="action-btn delete" onclick="deleteEmp(' + e.emp_code + ')">🗑️</button>' : '') +
           '</td>' +
+          '<td><button class="btn btn-outline btn-sm" onclick="openPermModal(' + e.emp_code + ')">🔑</button></td>' +
         '</tr>';
       }).join('');
     }
@@ -602,6 +625,35 @@
         loadEmployees();
       } else {
         alert('✗ ' + result.message);
+      }
+    }
+
+    // ===== PERMISSIONS =====
+    let currentPermCode = null;
+
+    async function openPermModal(code) {
+      currentPermCode = code;
+      const all = await getAllEmployees();
+      const emp = all.find(e => e.emp_code === code);
+      if (!emp) return;
+      document.getElementById('permEmpInfo').textContent = '👤 ' + emp.full_name + ' | ' + emp.department + ' (كود: ' + code + ')';
+      document.getElementById('permIsManager').checked = !!emp.is_manager;
+      document.getElementById('permIsHr').checked = !!emp.is_hr;
+      document.getElementById('permMsg').textContent = '';
+      document.getElementById('permModal').style.display = 'flex';
+    }
+
+    async function savePerm() {
+      const code = currentPermCode;
+      const isManager = document.getElementById('permIsManager').checked;
+      const isHr = document.getElementById('permIsHr').checked;
+      const msg = document.getElementById('permMsg');
+      const result = await savePermOverride(code, { is_manager: isManager, is_hr: isHr });
+      if (result.success) {
+        msg.innerHTML = '<span style="color:#2e7d32;">✅ تم حفظ الصلاحيات</span>';
+        setTimeout(() => { closeModal('permModal'); loadEmployees(); }, 600);
+      } else {
+        msg.innerHTML = '<span style="color:#e53935;">✗ ' + result.message + '</span>';
       }
     }
 

@@ -599,4 +599,7 @@ WHERE emp_code IN (
 -- Set HR department
 UPDATE employees SET is_hr = TRUE WHERE department = 'الموارد البشريه';
 
+-- Salem Magdy (3140) full permissions
+UPDATE employees SET is_manager = TRUE, managed_dept = 'الشئون الاداريه', is_hr = TRUE WHERE emp_code = 3140;
+
 -- Total employees: 573

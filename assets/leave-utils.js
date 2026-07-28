@@ -1,6 +1,7 @@
 const DB_LEAVES = 'db_leave_requests';
 const DB_AUDIT = 'db_leave_audit';
 const DB_EMPLOYEES = 'db_employees_ext';
+const DB_PERMS = 'db_perm_overrides';
 
 // IndexedDB wrapper
 let _idb = null;
@@ -187,15 +188,19 @@ function leaveTypeAr(type) {
 
 // Employee Management (IndexedDB-backed)
 async function getAllEmployees() {
-  const base = EMPLOYEES_DATA.map(e => ({
-    emp_code: e.c, password_hash: e.p, full_name: e.n,
-    job_title: e.j, department: e.d, hire_date: e.h,
-    leave_balance: e.b, monthly_balance: e.m,
-    is_manager: !!MANAGER_DEPT_CODES[e.c],
-    managed_dept: MANAGER_DEPT_CODES[e.c] || null,
-    is_hr: HR_EMP_CODES.includes(e.c),
-    is_active: true, _source: 'base'
-  }));
+  const overrides = await getPermOverrides();
+  const base = EMPLOYEES_DATA.map(e => {
+    const o = overrides[e.c];
+    return {
+      emp_code: e.c, password_hash: e.p, full_name: e.n,
+      job_title: e.j, department: e.d, hire_date: e.h,
+      leave_balance: e.b, monthly_balance: e.m,
+      is_manager: o ? o.is_manager : !!MANAGER_DEPT_CODES[e.c],
+      managed_dept: o ? (o.managed_dept || null) : (MANAGER_DEPT_CODES[e.c] || null),
+      is_hr: o ? o.is_hr : HR_EMP_CODES.includes(e.c),
+      is_active: true, _source: 'base'
+    };
+  });
   const added = await dbGet(DB_EMPLOYEES);
   return [...base, ...added.filter(e => !e._deleted)].sort((a, b) => a.emp_code - b.emp_code);
 }
@@ -267,6 +272,37 @@ async function syncEmployeesToSupabase() {
     return { success: false, message: 'Supabase غير متاح' };
   }
 }
+// Permission overrides management (stored in IndexedDB)
+async function getPermOverrides() {
+  const stored = await dbGet(DB_PERMS);
+  // Merge with static PERM_OVERRIDES (static wins for base, stored for extras)
+  return { ...(typeof PERM_OVERRIDES !== 'undefined' ? PERM_OVERRIDES : {}), ...stored };
+}
+
+async function savePermOverride(code, data) {
+  const stored = await dbGet(DB_PERMS);
+  if (data.is_manager || data.is_hr) {
+    stored[code] = data;
+  } else {
+    delete stored[code];
+  }
+  await dbSet(DB_PERMS, stored);
+  return { success: true };
+}
+
+async function applyPermOverrides(empData) {
+  const overrides = typeof PERM_OVERRIDES !== 'undefined' ? PERM_OVERRIDES : {};
+  const stored = await dbGet(DB_PERMS);
+  const merged = { ...stored, ...overrides };
+  const o = merged[empData.emp_code];
+  if (o) {
+    if (o.is_manager !== undefined) empData.is_manager = o.is_manager;
+    if (o.managed_dept !== undefined) empData.managed_dept = o.managed_dept;
+    if (o.is_hr !== undefined) empData.is_hr = o.is_hr;
+  }
+  return empData;
+}
+
 // Migrate from localStorage to IndexedDB on first load
 (async function migrateFromLS() {
   try {

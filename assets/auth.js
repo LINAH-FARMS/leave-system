@@ -45,13 +45,19 @@ async function login(empCode, password) {
       } catch (_) {}
       if (!empData) return { success: false, message: '✗ كود وظيفي غير صحيح' };
     } else {
+      const overrides = typeof PERM_OVERRIDES !== 'undefined' ? PERM_OVERRIDES : {};
+      try {
+        const stored = await dbGet('db_perm_overrides');
+        Object.assign(overrides, stored);
+      } catch (_) {}
+      const o = overrides[local.c];
       empData = {
         emp_code: local.c, password_hash: local.p, full_name: local.n,
         job_title: local.j, department: local.d, hire_date: local.h,
         leave_balance: local.b, monthly_balance: local.m,
-        is_manager: !!MANAGER_DEPT_CODES[local.c],
-        managed_dept: MANAGER_DEPT_CODES[local.c] || null,
-        is_hr: HR_EMP_CODES.includes(local.c), is_active: true
+        is_manager: o ? o.is_manager : !!MANAGER_DEPT_CODES[local.c],
+        managed_dept: o ? (o.managed_dept || null) : (MANAGER_DEPT_CODES[local.c] || null),
+        is_hr: o ? o.is_hr : HR_EMP_CODES.includes(local.c), is_active: true
       };
     }
   }
