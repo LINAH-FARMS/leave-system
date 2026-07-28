@@ -163,6 +163,31 @@ async function updateLeaveStatus(leaveId, status, comment, reviewer) {
   return { success: true };
 }
 
+async function deleteLeave(leaveId) {
+  let err = null;
+  try {
+    const { error } = await supabase.from('leave_requests').delete().eq('id', leaveId);
+    if (error) err = error;
+  } catch (e) { err = e; }
+
+  if (err) {
+    const leaves = await dbGet(DB_LEAVES);
+    const filtered = leaves.filter(l => l.id !== leaveId);
+    await dbSet(DB_LEAVES, filtered);
+  }
+
+  const audit = { leave_id: leaveId, action: 'deleted', comment: 'حذف الإجازة', created_at: new Date().toISOString() };
+  try {
+    await supabase.from('leave_audit').insert([audit]);
+  } catch (_) {
+    const audits = await dbGet(DB_AUDIT);
+    audits.push(audit);
+    await dbSet(DB_AUDIT, audits);
+  }
+
+  return { success: true };
+}
+
 function statusBadge(status) {
   const map = {
     'pending': '<span class="badge badge-pending">🟡 قيد الانتظار</span>',

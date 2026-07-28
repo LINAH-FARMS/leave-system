@@ -478,13 +478,22 @@
     }
 
     function hrActions(l) {
+      let html = '';
       if (l.status === 'approved_by_manager') {
-        return '<button class="btn btn-success btn-sm" onclick="openHrModal(\'' + l.id + '\',\'' + l.full_name.replace(/'/g, "\\'") + '\')">👑 اعتماد</button>';
+        html += '<button class="btn btn-success btn-sm" onclick="openHrModal(\'' + l.id + '\',\'' + l.full_name.replace(/'/g, "\\'") + '\')">👑 اعتماد</button>';
+      } else if (l.status === 'pending') {
+        html += '<span style="font-size:11px;color:#e65100;">بانتظار المدير</span>';
+      } else {
+        html += '<span style="font-size:11px;color:#999;">—</span>';
       }
-      if (l.status === 'pending') {
-        return '<span style="font-size:11px;color:#e65100;">بانتظار المدير</span>';
+      html += '<button class="btn btn-danger btn-sm" style="margin-right:4px;" onclick="confirmDeleteLeave(\'' + l.id + '\',\'' + l.full_name.replace(/'/g, "\\'") + '\')">🗑️</button>';
+      return html;
+    }
+
+    function confirmDeleteLeave(id, name) {
+      if (confirm('⚠️ هل أنت متأكد من حذف إجازة ' + name + '؟')) {
+        deleteLeave(id).then(() => loadAllRequests());
       }
-      return '<span style="font-size:11px;color:#999;">—</span>';
     }
 
     function openHrModal(id, name) {
