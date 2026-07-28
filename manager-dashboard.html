@@ -159,7 +159,7 @@
 
     function getActionButtons(l) {
       if (l.status === 'pending') {
-        return '<button class="btn btn-success btn-sm" onclick="openModal(' + l.id + ',\'' + l.full_name + '\',\'' + l.leave_type + '\')">✓</button>';
+        return '<button class="btn btn-success btn-sm" onclick="openModal(\'' + l.id + '\',\'' + l.full_name + '\',\'' + l.leave_type + '\')">✓</button>';
       }
       if (l.status === 'approved_by_manager') {
         return '<span style="font-size:11px;color:#2e7d32;">بانتظار HR</span>';
