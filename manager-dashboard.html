@@ -95,7 +95,7 @@
   </div>
 
   <script>
-    let session = requireAuth(['any']);
+    let session = getSession();
     let currentLeaveId = null;
     const urlParams = new URLSearchParams(window.location.search);
     const deptFromUrl = urlParams.get('dept');
