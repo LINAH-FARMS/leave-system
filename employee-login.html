@@ -31,6 +31,16 @@
       </div>
     </div>
   </div>
+
+  <div class="modal-overlay" id="roleModal" style="display:none;">
+    <div class="modal" style="text-align:center;">
+      <h3 style="margin-bottom:20px;">اختر طريقة الدخول</h3>
+      <button class="btn btn-primary" style="width:100%;margin-bottom:10px;padding:12px;font-size:15px;" onclick="enterAsEmployee()">👤 دخول كموظف</button>
+      <button class="btn btn-success" style="width:100%;margin-bottom:10px;padding:12px;font-size:15px;" id="managerEntryBtn" onclick="enterAsManager()">👔 دخول كمدير</button>
+      <button class="btn btn-outline" style="width:100%;padding:12px;font-size:15px;" onclick="cancelRoleChoice()">إلغاء</button>
+    </div>
+  </div>
+
   <script>
     const params = new URLSearchParams(window.location.search);
     const dept = params.get('dept') || '';
@@ -40,6 +50,8 @@
       window.location.href = 'manager-dashboard.html?dept=' + encodeURIComponent(dept);
       // stop execution after redirect
     }
+
+    let _lastSession = null;
 
     async function doLogin() {
       const code = document.getElementById('empCode').value.trim();
@@ -56,11 +68,31 @@
       }
 
       const s = result.session;
-      let target;
-      if (s.is_hr) target = 'hr-dashboard.html';
-      else if (s.is_manager) target = 'manager-dashboard.html' + (dept ? '?dept=' + encodeURIComponent(dept) : '');
-      else target = 'employee-form.html';
-      window.location.href = target;
+      const canManage = s.is_manager || s.is_hr;
+
+      if (canManage) {
+        _lastSession = s;
+        document.getElementById('managerEntryBtn').textContent = (s.is_hr ? '👑 دخول كمدير التطبيق' : '👔 دخول كمدير');
+        document.getElementById('roleModal').style.display = 'flex';
+      } else {
+        window.location.href = 'employee-form.html';
+      }
+    }
+
+    function enterAsEmployee() {
+      window.location.href = 'employee-form.html';
+    }
+
+    function enterAsManager() {
+      const s = _lastSession;
+      if (s.is_hr) window.location.href = 'hr-dashboard.html';
+      else window.location.href = 'manager-dashboard.html' + (dept ? '?dept=' + encodeURIComponent(dept) : '');
+    }
+
+    function cancelRoleChoice() {
+      document.getElementById('roleModal').style.display = 'none';
+      logout();
+      _lastSession = null;
     }
 
     document.getElementById('password').addEventListener('keypress', function(e) {
