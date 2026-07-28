@@ -81,7 +81,7 @@ async function login(empCode, password) {
     is_hr: empData.is_hr,
     leave_balance: empData.leave_balance
   };
-  sessionStorage.setItem('leave_session', JSON.stringify(session));
+  try { sessionStorage.setItem('leave_session', JSON.stringify(session)); } catch (_) {}
 
   return { success: true, session };
 }
@@ -94,7 +94,7 @@ function getSession() {
 }
 
 function logout() {
-  sessionStorage.removeItem('leave_session');
+  try { sessionStorage.removeItem('leave_session'); } catch (_) {}
   window.location.href = 'index.html';
 }
 
