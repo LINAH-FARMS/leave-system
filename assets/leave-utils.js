@@ -97,7 +97,7 @@ async function fetchDeptLeaves(department, statusFilter) {
   try {
     let q = supabase.from('leave_requests').select('*').eq('department', department);
     if (statusFilter && statusFilter !== 'all') q = q.eq('status', statusFilter);
-    const { data } = q.order('created_at', { ascending: false });
+    const { data } = await q.order('created_at', { ascending: false });
     if (data) return data;
   } catch (_) {}
   const all = await dbGet(DB_LEAVES);
@@ -116,7 +116,7 @@ async function fetchAllLeaves(filters) {
       if (filters.from_date) q = q.gte('start_date', filters.from_date);
       if (filters.to_date) q = q.lte('end_date', filters.to_date);
     }
-    const { data } = q.order('created_at', { ascending: false });
+    const { data } = await q.order('created_at', { ascending: false });
     if (data) return data;
   } catch (_) {}
   let all = await dbGet(DB_LEAVES);
