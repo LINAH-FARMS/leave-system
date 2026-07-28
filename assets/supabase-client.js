@@ -1,6 +1,6 @@
 // Supabase REST client using fetch() — no CDN, no tracking issues
 var SUPABASE_URL = 'https://idejmgmftmrniviftcce.supabase.co';
-var SUPABASE_ANON_KEY = 'sb_publishable_AvMTa-zmQ4hgA1hJNpYc3g_gu8rlirz';
+var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlkZWptZ21mdG1ybml2aWZ0Y2NlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUyNjA3NDIsImV4cCI6MjEwMDgzNjc0Mn0.y9Mdo6gC4wCU7LH0GucyHS5FvnQwmGmxUtk6ptE5mH0';
 
 var supabase = (function() {
   var baseHeaders = {
@@ -36,10 +36,10 @@ var supabase = (function() {
       var opts = { method: method, headers: h };
       if (bodyData) opts.body = JSON.stringify(bodyData);
       return fetch(url, opts).then(function(r) {
-        if (method === 'GET') {
-          return r.json().then(function(d) { return { data: d, error: null }; });
-        }
-        return r.json().then(function(d) { return { data: d, error: null }; }).catch(function() {
+        return r.json().then(function(d) {
+          if (!r.ok) return { data: null, error: { message: r.statusText, details: d } };
+          return { data: method === 'GET' ? d : null, error: null };
+        }).catch(function() {
           return { data: null, error: r.ok ? null : { message: r.statusText } };
         });
       }).catch(function(e) {
