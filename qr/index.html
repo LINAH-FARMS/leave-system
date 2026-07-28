@@ -49,7 +49,7 @@
 
       // Employee QR per department
       for (const dept of DEPARTMENTS) {
-        const url = BASE_URL + '/index.html?role=employee&dept=' + encodeURIComponent(dept);
+        const url = BASE_URL + '/employee-login.html?dept=' + encodeURIComponent(dept) + '&mode=employee';
         const color = COLORS[dept] || '#999';
         html += '<div class="qr-card">' +
           '<div class="badge" style="background:' + color + ';">👤 موظف</div>' +
@@ -72,7 +72,7 @@
       }
 
       // HR QR
-      const hrUrl = BASE_URL + '/index.html?role=hr';
+      const hrUrl = BASE_URL + '/employee-login.html';
       html += '<div class="qr-card" style="border:2px solid #E91E63;">' +
         '<div class="badge" style="background:#E91E63;">👑 مدير التطبيق</div>' +
         '<h3>مدير التطبيق</h3>' +

@@ -144,7 +144,7 @@
       btn.disabled = false; btn.textContent = '✅ تقديم الطلب';
 
       if (result.success) {
-        msg.innerHTML = '<span style="color:#2e7d32;">✅ تم تقديم الطلب بنجاح</span>';
+        msg.innerHTML = '<div style="background:#e8f5e9;padding:15px;border-radius:8px;font-size:15px;"><strong>' + session.name + '</strong><br>📋 طلب الإجازة قيد المراجعة<br><span style="color:#2e7d32;">شكراً</span></div>';
         document.getElementById('startDate').value = '';
         document.getElementById('endDate').value = '';
         document.getElementById('daysCount').textContent = '0';
