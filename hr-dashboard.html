@@ -709,7 +709,8 @@
         html += '<div class="qr-card">' +
           '<div class="badge" style="background:' + (colors[dept]||'#999') + ';">' + dept + '</div>' +
           '<img src="' + api + encodeURIComponent(url) + '" alt="QR Manager ' + dept + '" loading="lazy">' +
-          '<div class="url">' + url + '</div></div>';
+          '<div class="url">' + url + '</div>' +
+          '<a href="' + url + '" class="btn btn-sm btn-outline" style="margin-top:8px;font-size:13px;">🚪 دخول</a></div>';
       }
       html += '</div></div>';
 
