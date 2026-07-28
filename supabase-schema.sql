@@ -46,3 +46,7 @@ CREATE POLICY allow_all_leave_requests ON leave_requests
 
 CREATE POLICY allow_all_leave_audit ON leave_audit
   FOR ALL USING (true) WITH CHECK (true);
+
+-- Grant table permissions to anon role (used by publishable key)
+GRANT ALL ON ALL TABLES IN SCHEMA public TO anon;
+GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO anon;
