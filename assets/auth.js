@@ -27,22 +27,33 @@ async function login(empCode, password) {
 
   // Fall back to local data
   if (!empData) {
-    const local = EMPLOYEES_DATA.find(e => e.c === code);
-    if (!local) return { success: false, message: '✗ كود وظيفي غير صحيح' };
-    empData = {
-      emp_code: local.c,
-      password_hash: local.p,
-      full_name: local.n,
-      job_title: local.j,
-      department: local.d,
-      hire_date: local.h,
-      leave_balance: local.b,
-      monthly_balance: local.m,
-      is_manager: MANAGER_DEPT_CODES[local.c] ? true : false,
-      managed_dept: MANAGER_DEPT_CODES[local.c] || null,
-      is_hr: HR_EMP_CODES.includes(local.c),
-      is_active: true
-    };
+    let local = EMPLOYEES_DATA.find(e => e.c === code);
+    if (!local) {
+      try {
+        const added = JSON.parse(localStorage.getItem('ls_employees_ext') || '[]');
+        const a = added.find(e => e.emp_code === code && !e._deleted);
+        if (a) {
+          empData = {
+            emp_code: a.emp_code, password_hash: a.password_hash,
+            full_name: a.full_name, job_title: a.job_title,
+            department: a.department, hire_date: a.hire_date || '',
+            leave_balance: a.leave_balance || 0, monthly_balance: a.monthly_balance || 7.33,
+            is_manager: a.is_manager || false, managed_dept: a.managed_dept || null,
+            is_hr: a.is_hr || false, is_active: a.is_active !== false
+          };
+        }
+      } catch (_) {}
+      if (!empData) return { success: false, message: '✗ كود وظيفي غير صحيح' };
+    } else {
+      empData = {
+        emp_code: local.c, password_hash: local.p, full_name: local.n,
+        job_title: local.j, department: local.d, hire_date: local.h,
+        leave_balance: local.b, monthly_balance: local.m,
+        is_manager: !!MANAGER_DEPT_CODES[local.c],
+        managed_dept: MANAGER_DEPT_CODES[local.c] || null,
+        is_hr: HR_EMP_CODES.includes(local.c), is_active: true
+      };
+    }
   }
 
   const pwHash = hashPassword(password);

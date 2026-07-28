@@ -10,6 +10,25 @@
   <script src="assets/employees-data.js"></script>
   <script src="assets/auth.js"></script>
   <script src="assets/leave-utils.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+  <style>
+    .tabs { display:flex; gap:0; margin-bottom:20px; border-radius:10px; overflow:hidden; }
+    .tab { flex:1; padding:12px; text-align:center; font-weight:600; cursor:pointer; background:#e0e0e0; transition:all 0.2s; border:none; font-family:inherit; font-size:14px; }
+    .tab.active { background:#2e7d32; color:white; }
+    .tab:not(.active):hover { background:#c8e6c9; }
+    .tab-content { display:none; }
+    .tab-content.active { display:block; }
+    .emp-active { color:#2e7d32; font-weight:600; }
+    .emp-inactive { color:#e53935; }
+    .action-btn { padding:4px 10px; border:none; border-radius:6px; cursor:pointer; font-size:12px; font-family:inherit; margin:0 2px; }
+    .action-btn.edit { background:#e3f2fd; color:#1565c0; }
+    .action-btn.delete { background:#ffebee; color:#c62828; }
+    .action-btn:hover { opacity:0.8; }
+    .search-box { width:100%; padding:10px 14px; border:2px solid #e0e0e0; border-radius:8px; font-family:inherit; font-size:14px; margin-bottom:15px; }
+    .search-box:focus { border-color:#4caf50; outline:none; }
+    .inline-flex { display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+  </style>
 </head>
 <body>
   <div class="header">
@@ -26,73 +45,115 @@
       <!-- Stats -->
       <div class="stats" id="statsArea"></div>
 
-      <!-- Filters -->
-      <div class="card">
-        <h2>🔍 فلترة الطلبات</h2>
-        <div class="filter-bar">
-          <div class="form-group">
-            <label>الإدارة</label>
-            <select id="filterDept" onchange="loadAll()">
-              <option value="all">كل الإدارات</option>
-              <option value="زراعه">زراعه</option>
-              <option value="فنيه">فنيه</option>
-              <option value="مخازن">مخازن</option>
-              <option value="الشئون الاداريه">الشئون الاداريه</option>
-              <option value="الموارد البشريه">الموارد البشريه</option>
-              <option value="امن">امن</option>
-              <option value="ميكنه">ميكنه</option>
-            </select>
+      <!-- Tabs -->
+      <div class="tabs">
+        <button class="tab active" onclick="switchTab('leaves')">📋 طلبات الإجازات</button>
+        <button class="tab" onclick="switchTab('employees')">👥 إدارة الموظفين</button>
+      </div>
+
+      <!-- TAB: Leaves -->
+      <div class="tab-content active" id="tabLeaves">
+        <div class="card">
+          <h2>🔍 فلترة الطلبات</h2>
+          <div class="filter-bar">
+            <div class="form-group">
+              <label>الإدارة</label>
+              <select id="filterDept" onchange="loadLeaves()">
+                <option value="all">كل الإدارات</option>
+                <option value="زراعه">زراعه</option>
+                <option value="فنيه">فنيه</option>
+                <option value="مخازن">مخازن</option>
+                <option value="الشئون الاداريه">الشئون الاداريه</option>
+                <option value="الموارد البشريه">الموارد البشريه</option>
+                <option value="امن">امن</option>
+                <option value="ميكنه">ميكنه</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>الحالة</label>
+              <select id="filterStatus" onchange="loadLeaves()">
+                <option value="all">كل الحالات</option>
+                <option value="pending">🟡 قيد الانتظار</option>
+                <option value="approved_by_manager">🟢 موافقة مدير</option>
+                <option value="rejected_by_manager">🔴 مرفوض من مدير</option>
+                <option value="approved_by_hr">✅ معتمد HR</option>
+                <option value="rejected_by_hr">❌ مرفوض HR</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>من تاريخ</label>
+              <input type="date" id="filterFrom" onchange="loadLeaves()">
+            </div>
+            <div class="form-group">
+              <label>إلى تاريخ</label>
+              <input type="date" id="filterTo" onchange="loadLeaves()">
+            </div>
+            <button class="btn btn-primary" onclick="loadLeaves()">🔍 بحث</button>
           </div>
-          <div class="form-group">
-            <label>الحالة</label>
-            <select id="filterStatus" onchange="loadAll()">
-              <option value="all">كل الحالات</option>
-              <option value="pending">🟡 قيد الانتظار</option>
-              <option value="approved_by_manager">🟢 موافقة مدير</option>
-              <option value="rejected_by_manager">🔴 مرفوض من مدير</option>
-              <option value="approved_by_hr">✅ معتمد HR</option>
-              <option value="rejected_by_hr">❌ مرفوض HR</option>
-            </select>
+          <div class="inline-flex" style="margin-top:10px;">
+            <button class="btn btn-outline btn-sm" onclick="exportExcel()">📤 تصدير Excel</button>
+            <button class="btn btn-outline btn-sm" onclick="exportPDF()">📄 تصدير PDF</button>
           </div>
-          <div class="form-group">
-            <label>من تاريخ</label>
-            <input type="date" id="filterFrom" onchange="loadAll()">
+        </div>
+
+        <div class="card">
+          <h2>📋 جميع طلبات الإجازات</h2>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>الموظف</th>
+                  <th>الإدارة</th>
+                  <th>النوع</th>
+                  <th>المدة</th>
+                  <th>أيام</th>
+                  <th>رقم الموبايل</th>
+                  <th>السبب</th>
+                  <th>المدير</th>
+                  <th>HR</th>
+                  <th>الحالة</th>
+                  <th>تاريخ الطلب</th>
+                  <th>الإجراء</th>
+                </tr>
+              </thead>
+              <tbody id="allRequestsBody">
+                <tr><td colspan="13" style="text-align:center;color:#999;">جاري التحميل...</td></tr>
+              </tbody>
+            </table>
           </div>
-          <div class="form-group">
-            <label>إلى تاريخ</label>
-            <input type="date" id="filterTo" onchange="loadAll()">
-          </div>
-          <button class="btn btn-primary" onclick="loadAll()">🔍 بحث</button>
-          <button class="btn btn-outline" onclick="exportExcel()">📤 تصدير Excel</button>
         </div>
       </div>
 
-      <!-- Requests Table -->
-      <div class="card">
-        <h2>📋 جميع طلبات الإجازات</h2>
-        <div class="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>#</th>
-                <th>الموظف</th>
-                <th>الإدارة</th>
-                <th>النوع</th>
-                <th>المدة</th>
-                <th>أيام</th>
-                <th>رقم الموبايل</th>
-                <th>السبب</th>
-                <th>المدير</th>
-                <th>HR</th>
-                <th>الحالة</th>
-                <th>تاريخ الطلب</th>
-                <th>الإجراء</th>
-              </tr>
-            </thead>
-            <tbody id="allRequestsBody">
-              <tr><td colspan="13" style="text-align:center;color:#999;">جاري التحميل...</td></tr>
-            </tbody>
-          </table>
+      <!-- TAB: Employees -->
+      <div class="tab-content" id="tabEmployees">
+        <div class="card">
+          <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:15px;">
+            <h2 style="margin:0;">👥 جميع الموظفين</h2>
+            <button class="btn btn-success btn-sm" onclick="openAddEmpModal()">➕ إضافة موظف</button>
+          </div>
+          <input type="text" class="search-box" id="empSearch" placeholder="🔍 بحث بالاسم أو الكود الوظيفي..." oninput="loadEmployees()">
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>الكود</th>
+                  <th>الاسم</th>
+                  <th>الوظيفة</th>
+                  <th>الإدارة</th>
+                  <th>تاريخ التعيين</th>
+                  <th>الرصيد</th>
+                  <th>الشهري</th>
+                  <th>مدير</th>
+                  <th>HR</th>
+                  <th>الإجراء</th>
+                </tr>
+              </thead>
+              <tbody id="employeesBody">
+                <tr><td colspan="10" style="text-align:center;color:#999;">جاري التحميل...</td></tr>
+              </tbody>
+            </table>
+          </div>
         </div>
       </div>
 
@@ -115,7 +176,134 @@
       <div class="btn-group">
         <button class="btn btn-success" onclick="hrApprove()">✅ اعتماد نهائي</button>
         <button class="btn btn-danger" onclick="hrReject()">❌ رفض</button>
-        <button class="btn btn-outline" onclick="closeHrModal()">إلغاء</button>
+        <button class="btn btn-outline" onclick="closeModal('hrModal')">إلغاء</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add Employee Modal -->
+  <div class="modal-overlay" id="addEmpModal">
+    <div class="modal" style="max-width:600px;">
+      <h3>➕ إضافة موظف جديد</h3>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+        <div class="form-group">
+          <label>الكود الوظيفي *</label>
+          <input type="number" id="addEmpCode" placeholder="مثال: 5000">
+        </div>
+        <div class="form-group">
+          <label>الاسم *</label>
+          <input type="text" id="addEmpName" placeholder="الاسم الكامل">
+        </div>
+        <div class="form-group">
+          <label>الوظيفة</label>
+          <input type="text" id="addEmpJob" placeholder="المسمى الوظيفي">
+        </div>
+        <div class="form-group">
+          <label>الإدارة *</label>
+          <select id="addEmpDept">
+            <option value="زراعه">زراعه</option>
+            <option value="فنيه">فنيه</option>
+            <option value="مخازن">مخازن</option>
+            <option value="الشئون الاداريه">الشئون الاداريه</option>
+            <option value="الموارد البشريه">الموارد البشريه</option>
+            <option value="امن">امن</option>
+            <option value="ميكنه">ميكنه</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>تاريخ التعيين</label>
+          <input type="date" id="addEmpHire">
+        </div>
+        <div class="form-group">
+          <label>الرقم السري</label>
+          <input type="text" id="addEmpPass" value="123456" placeholder="الرقم السري">
+        </div>
+        <div class="form-group">
+          <label>رصيد الإجازات</label>
+          <input type="number" id="addEmpBalance" value="0" step="0.001">
+        </div>
+        <div class="form-group">
+          <label>الرصيد الشهري</label>
+          <input type="number" id="addEmpMonthly" value="7.33" step="0.001">
+        </div>
+      </div>
+      <div style="display:flex;gap:15px;margin:10px 0;">
+        <label style="display:flex;align-items:center;gap:5px;font-size:14px;">
+          <input type="checkbox" id="addEmpIsManager"> مدير
+        </label>
+        <label style="display:flex;align-items:center;gap:5px;font-size:14px;">
+          <input type="checkbox" id="addEmpIsHr"> موظف HR
+        </label>
+      </div>
+      <div id="addEmpMsg" style="margin-bottom:10px;font-size:13px;"></div>
+      <div class="btn-group">
+        <button class="btn btn-success" onclick="addEmployee()">💾 حفظ</button>
+        <button class="btn btn-outline" onclick="closeModal('addEmpModal')">إلغاء</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Edit Employee Modal -->
+  <div class="modal-overlay" id="editEmpModal">
+    <div class="modal" style="max-width:600px;">
+      <h3>✏️ تعديل بيانات موظف</h3>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+        <div class="form-group">
+          <label>الكود الوظيفي</label>
+          <input type="text" id="editEmpCode" readonly style="background:#f5f5f5;">
+        </div>
+        <div class="form-group">
+          <label>الاسم *</label>
+          <input type="text" id="editEmpName">
+        </div>
+        <div class="form-group">
+          <label>الوظيفة</label>
+          <input type="text" id="editEmpJob">
+        </div>
+        <div class="form-group">
+          <label>الإدارة *</label>
+          <select id="editEmpDept">
+            <option value="زراعه">زراعه</option>
+            <option value="فنيه">فنيه</option>
+            <option value="مخازن">مخازن</option>
+            <option value="الشئون الاداريه">الشئون الاداريه</option>
+            <option value="الموارد البشريه">الموارد البشريه</option>
+            <option value="امن">امن</option>
+            <option value="ميكنه">ميكنه</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>تاريخ التعيين</label>
+          <input type="date" id="editEmpHire">
+        </div>
+        <div class="form-group">
+          <label>الرقم السري (اتركه فارغًا إن لم ترد تغييره)</label>
+          <input type="text" id="editEmpPass" placeholder="أدخل الرقم السري الجديد">
+        </div>
+        <div class="form-group">
+          <label>رصيد الإجازات</label>
+          <input type="number" id="editEmpBalance" step="0.001">
+        </div>
+        <div class="form-group">
+          <label>الرصيد الشهري</label>
+          <input type="number" id="editEmpMonthly" step="0.001">
+        </div>
+      </div>
+      <div style="display:flex;gap:15px;margin:10px 0;">
+        <label style="display:flex;align-items:center;gap:5px;font-size:14px;">
+          <input type="checkbox" id="editEmpIsManager"> مدير
+        </label>
+        <label style="display:flex;align-items:center;gap:5px;font-size:14px;">
+          <input type="checkbox" id="editEmpIsHr"> موظف HR
+        </label>
+        <label style="display:flex;align-items:center;gap:5px;font-size:14px;">
+          <input type="checkbox" id="editEmpIsActive" checked"> نشط
+        </label>
+      </div>
+      <div id="editEmpMsg" style="margin-bottom:10px;font-size:13px;"></div>
+      <div class="btn-group">
+        <button class="btn btn-success" onclick="saveEditEmployee()">💾 حفظ التعديلات</button>
+        <button class="btn btn-outline" onclick="closeModal('editEmpModal')">إلغاء</button>
       </div>
     </div>
   </div>
@@ -123,6 +311,7 @@
   <script>
     const session = requireAuth(['any']);
     let currentHrLeaveId = null;
+    let currentLeavesData = [];
 
     if (session) {
       if (!session.is_hr) {
@@ -134,23 +323,41 @@
       } else {
         document.getElementById('dashboardArea').style.display = 'block';
         document.getElementById('userInfo').textContent = session.name + ' | HR';
-        loadAll();
+        loadLeaves();
+        loadEmployees();
       }
     } else {
       document.getElementById('loginPrompt').style.display = 'block';
     }
 
-    async function loadAll() {
+    function switchTab(tab) {
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+      if (tab === 'leaves') {
+        document.querySelectorAll('.tab')[0].classList.add('active');
+        document.getElementById('tabLeaves').classList.add('active');
+      } else {
+        document.querySelectorAll('.tab')[1].classList.add('active');
+        document.getElementById('tabEmployees').classList.add('active');
+        loadEmployees();
+      }
+    }
+
+    function closeModal(id) {
+      document.getElementById(id).style.display = 'none';
+    }
+
+    // ===== LEAVES =====
+    async function loadLeaves() {
       const filters = {
         department: document.getElementById('filterDept').value,
         status: document.getElementById('filterStatus').value,
         from_date: document.getElementById('filterFrom').value,
         to_date: document.getElementById('filterTo').value
       };
+      currentLeavesData = await fetchAllLeaves(filters);
+      const leaves = currentLeavesData;
 
-      const leaves = await fetchAllLeaves(filters);
-
-      // Stats
       const total = leaves.length;
       const pending = leaves.filter(l => l.status === 'pending').length;
       const mgrApproved = leaves.filter(l => l.status === 'approved_by_manager').length;
@@ -190,13 +397,9 @@
 
     function getDeptColor(dept) {
       const colors = {
-        'زراعه': '#4CAF50',
-        'فنيه': '#2196F3',
-        'مخازن': '#FF9800',
-        'الشئون الاداريه': '#9C27B0',
-        'الموارد البشريه': '#E91E63',
-        'امن': '#607D8B',
-        'ميكنه': '#795548'
+        'زراعه': '#4CAF50', 'فنيه': '#2196F3', 'مخازن': '#FF9800',
+        'الشئون الاداريه': '#9C27B0', 'الموارد البشريه': '#E91E63',
+        'امن': '#607D8B', 'ميكنه': '#795548'
       };
       return colors[dept] || '#999';
     }
@@ -219,51 +422,222 @@
       document.getElementById('hrModalComment').value = '';
     }
 
-    function closeHrModal() {
-      document.getElementById('hrModal').style.display = 'none';
-      currentHrLeaveId = null;
-    }
-
     async function hrApprove() {
       if (!currentHrLeaveId) return;
       const comment = document.getElementById('hrModalComment').value;
       await updateLeaveStatus(currentHrLeaveId, 'approved_by_hr', comment, session.emp_code);
-      closeHrModal();
-      loadAll();
+      closeModal('hrModal');
+      loadLeaves();
     }
 
     async function hrReject() {
       if (!currentHrLeaveId) return;
       const comment = document.getElementById('hrModalComment').value || 'مرفوض من HR';
       await updateLeaveStatus(currentHrLeaveId, 'rejected_by_hr', comment, session.emp_code);
-      closeHrModal();
-      loadAll();
+      closeModal('hrModal');
+      loadLeaves();
+    }
+
+    // ===== EMPLOYEE MANAGEMENT =====
+    function loadEmployees() {
+      const search = (document.getElementById('empSearch').value || '').trim();
+      const all = getAllEmployees();
+      const filtered = search ? all.filter(e =>
+        e.full_name.includes(search) || String(e.emp_code).includes(search)
+      ) : all;
+
+      if (filtered.length === 0) {
+        document.getElementById('employeesBody').innerHTML =
+          '<tr><td colspan="10" style="text-align:center;color:#999;">لا يوجد موظفين</td></tr>';
+        return;
+      }
+
+      document.getElementById('employeesBody').innerHTML = filtered.map(e => {
+        const isLocal = e._source === 'local';
+        return '<tr>' +
+          '<td><strong>' + e.emp_code + '</strong></td>' +
+          '<td>' + e.full_name + (isLocal ? ' <span style="font-size:10px;color:#ff9800;">🆕</span>' : '') + '</td>' +
+          '<td>' + (e.job_title || '—') + '</td>' +
+          '<td><span class="dept-tag" style="background:' + getDeptColor(e.department) + ';">' + e.department + '</span></td>' +
+          '<td>' + (e.hire_date ? formatDate(e.hire_date.split(' ')[0]) : '—') + '</td>' +
+          '<td>' + (e.leave_balance || 0) + '</td>' +
+          '<td>' + (e.monthly_balance || 0) + '</td>' +
+          '<td>' + (e.is_manager ? '✅' : '—') + '</td>' +
+          '<td>' + (e.is_hr ? '✅' : '—') + '</td>' +
+          '<td>' +
+            '<button class="action-btn edit" onclick="openEditEmpModal(' + e.emp_code + ')">✏️</button>' +
+            (isLocal ? '<button class="action-btn delete" onclick="deleteEmp(' + e.emp_code + ')">🗑️</button>' : '') +
+          '</td>' +
+        '</tr>';
+      }).join('');
+    }
+
+    function openAddEmpModal() {
+      document.getElementById('addEmpCode').value = '';
+      document.getElementById('addEmpName').value = '';
+      document.getElementById('addEmpJob').value = '';
+      document.getElementById('addEmpDept').value = 'زراعه';
+      document.getElementById('addEmpHire').value = '';
+      document.getElementById('addEmpPass').value = '123456';
+      document.getElementById('addEmpBalance').value = '0';
+      document.getElementById('addEmpMonthly').value = '7.33';
+      document.getElementById('addEmpIsManager').checked = false;
+      document.getElementById('addEmpIsHr').checked = false;
+      document.getElementById('addEmpMsg').textContent = '';
+      document.getElementById('addEmpModal').style.display = 'flex';
+    }
+
+    function addEmployee() {
+      const code = parseInt(document.getElementById('addEmpCode').value);
+      const name = document.getElementById('addEmpName').value.trim();
+      const dept = document.getElementById('addEmpDept').value;
+      const msg = document.getElementById('addEmpMsg');
+
+      if (!code || !name) { msg.innerHTML = '<span style="color:#e53935;">✗ الكود والاسم مطلوبان</span>'; return; }
+
+      const result = addLocalEmployee({
+        emp_code: code,
+        full_name: name,
+        job_title: document.getElementById('addEmpJob').value.trim(),
+        department: dept,
+        hire_date: document.getElementById('addEmpHire').value || new Date().toISOString().split('T')[0],
+        password_hash: document.getElementById('addEmpPass').value || '123456',
+        leave_balance: parseFloat(document.getElementById('addEmpBalance').value) || 0,
+        monthly_balance: parseFloat(document.getElementById('addEmpMonthly').value) || 7.33,
+        is_manager: document.getElementById('addEmpIsManager').checked,
+        is_hr: document.getElementById('addEmpIsHr').checked
+      });
+
+      if (result.success) {
+        msg.innerHTML = '<span style="color:#2e7d32;">✅ تم إضافة الموظف بنجاح</span>';
+        setTimeout(() => { closeModal('addEmpModal'); loadEmployees(); }, 800);
+      } else {
+        msg.innerHTML = '<span style="color:#e53935;">✗ ' + result.message + '</span>';
+      }
+    }
+
+    function openEditEmpModal(code) {
+      const all = getAllEmployees();
+      const emp = all.find(e => e.emp_code === code);
+      if (!emp) return;
+
+      document.getElementById('editEmpCode').value = emp.emp_code;
+      document.getElementById('editEmpName').value = emp.full_name;
+      document.getElementById('editEmpJob').value = emp.job_title || '';
+      document.getElementById('editEmpDept').value = emp.department;
+      document.getElementById('editEmpHire').value = emp.hire_date ? emp.hire_date.split(' ')[0] : '';
+      document.getElementById('editEmpPass').value = '';
+      document.getElementById('editEmpBalance').value = emp.leave_balance || 0;
+      document.getElementById('editEmpMonthly').value = emp.monthly_balance || 7.33;
+      document.getElementById('editEmpIsManager').checked = !!emp.is_manager;
+      document.getElementById('editEmpIsHr').checked = !!emp.is_hr;
+      document.getElementById('editEmpIsActive').checked = emp.is_active !== false;
+      document.getElementById('editEmpMsg').textContent = '';
+      document.getElementById('editEmpModal').style.display = 'flex';
+    }
+
+    function saveEditEmployee() {
+      const code = parseInt(document.getElementById('editEmpCode').value);
+      const name = document.getElementById('editEmpName').value.trim();
+      const msg = document.getElementById('editEmpMsg');
+
+      if (!name) { msg.innerHTML = '<span style="color:#e53935;">✗ الاسم مطلوب</span>'; return; }
+
+      const updates = {
+        full_name: name,
+        job_title: document.getElementById('editEmpJob').value.trim(),
+        department: document.getElementById('editEmpDept').value,
+        hire_date: document.getElementById('editEmpHire').value || '',
+        leave_balance: parseFloat(document.getElementById('editEmpBalance').value) || 0,
+        monthly_balance: parseFloat(document.getElementById('editEmpMonthly').value) || 7.33,
+        is_manager: document.getElementById('editEmpIsManager').checked,
+        is_hr: document.getElementById('editEmpIsHr').checked,
+        is_active: document.getElementById('editEmpIsActive').checked
+      };
+
+      const pass = document.getElementById('editEmpPass').value.trim();
+      if (pass) updates.password = pass;
+
+      const result = updateLocalEmployee(code, updates);
+      if (result.success) {
+        msg.innerHTML = '<span style="color:#2e7d32;">✅ تم حفظ التعديلات</span>';
+        setTimeout(() => { closeModal('editEmpModal'); loadEmployees(); }, 800);
+      } else {
+        msg.innerHTML = '<span style="color:#e53935;">✗ ' + result.message + '</span>';
+      }
+    }
+
+    function deleteEmp(code) {
+      if (!confirm('⚠️ هل أنت متأكد من حذف هذا الموظف؟')) return;
+      const result = deleteLocalEmployee(code);
+      if (result.success) {
+        loadEmployees();
+      } else {
+        alert('✗ ' + result.message);
+      }
+    }
+
+    // ===== EXPORT =====
+    function getExportData() {
+      const leaves = currentLeavesData;
+      return leaves.map(l => ({
+        'الموظف': l.full_name,
+        'الكود': l.emp_code,
+        'الإدارة': l.department,
+        'نوع الإجازة': leaveTypeAr(l.leave_type),
+        'من تاريخ': formatDate(l.start_date),
+        'إلى تاريخ': formatDate(l.end_date),
+        'الأيام': l.days_count,
+        'رقم الموبايل': l.phone || '',
+        'السبب': l.reason || '',
+        'ملاحظات المدير': l.manager_comment || '',
+        'ملاحظات HR': l.hr_comment || '',
+        'الحالة': statusBadge(l.status).replace(/<[^>]+>/g, ''),
+        'تاريخ الطلب': l.created_at ? formatDate(l.created_at.split('T')[0]) : ''
+      }));
     }
 
     function exportExcel() {
-      // Simple CSV export from current table data
-      const rows = document.querySelectorAll('#allRequestsBody tr');
-      let csv = 'الموظف,الإدارة,النوع,من,إلى,أيام,رقم الموبايل,السبب,الحالة,تاريخ الطلب\n';
-      rows.forEach(row => {
-        const cols = row.querySelectorAll('td');
-        if (cols.length > 2) {
-          const name = cols[1]?.textContent?.trim().split('\n')[0] || '';
-          const dept = cols[2]?.textContent?.trim() || '';
-          const type = cols[3]?.textContent?.trim() || '';
-          const period = cols[4]?.textContent?.trim().replace('→', ' → ') || '';
-          const days = cols[5]?.textContent?.trim() || '';
-          const phone = cols[6]?.textContent?.trim() || '';
-          const reason = cols[7]?.textContent?.trim() || '';
-          const status = cols[10]?.textContent?.trim() || '';
-          const date = cols[11]?.textContent?.trim() || '';
-          csv += `${name},${dept},${type},${period},${days},${phone},${reason},${status},${date}\n`;
-        }
+      const data = getExportData();
+      if (data.length === 0) { alert('لا توجد بيانات للتصدير'); return; }
+      const ws = XLSX.utils.json_to_sheet(data);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'الإجازات');
+      XLSX.writeFile(wb, 'اجازات_' + new Date().toISOString().split('T')[0] + '.xlsx');
+    }
+
+    function exportPDF() {
+      const data = getExportData();
+      if (data.length === 0) { alert('لا توجد بيانات للتصدير'); return; }
+
+      const headers = Object.keys(data[0]);
+      let tableHtml = '<table dir="rtl" style="width:100%;border-collapse:collapse;font-size:10px;font-family:Tahoma,Arial,sans-serif;">';
+      tableHtml += '<thead><tr style="background:#1b5e20;color:white;">';
+      headers.forEach(h => { tableHtml += '<th style="padding:6px 8px;border:1px solid #ddd;text-align:center;">' + h + '</th>'; });
+      tableHtml += '</tr></thead><tbody>';
+      data.forEach(row => {
+        tableHtml += '<tr>';
+        headers.forEach(h => { tableHtml += '<td style="padding:5px 8px;border:1px solid #ddd;text-align:center;">' + (row[h] || '') + '</td>'; });
+        tableHtml += '</tr>';
       });
-      const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
-      const link = document.createElement('a');
-      link.href = URL.createObjectURL(blob);
-      link.download = 'اجازات_' + new Date().toISOString().split('T')[0] + '.csv';
-      link.click();
+      tableHtml += '</tbody></table>';
+
+      const el = document.createElement('div');
+      el.innerHTML = `
+        <div style="text-align:center;margin-bottom:15px;font-family:Tahoma,Arial,sans-serif;">
+          <h2 style="color:#1b5e20;margin:0;">🌿 تقرير الإجازات</h2>
+          <p style="color:#666;font-size:11px;margin:5px 0;">${new Date().toLocaleDateString('ar-EG')}</p>
+        </div>
+        ${tableHtml}
+      `;
+
+      html2pdf().set({
+        margin: [10, 5, 10, 5],
+        filename: 'اجازات_' + new Date().toISOString().split('T')[0] + '.pdf',
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2, useCORS: true },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'landscape' }
+      }).from(el).save();
     }
   </script>
 </body>

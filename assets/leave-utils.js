@@ -1,5 +1,6 @@
 const LS_LEAVES = 'ls_leave_requests';
 const LS_AUDIT = 'ls_leave_audit';
+const LS_EMPLOYEES = 'ls_employees';
 
 function formatDate(d) {
   if (!d) return '';
@@ -157,4 +158,89 @@ function leaveTypeAr(type) {
     'عارضة': 'عارضة'
   };
   return map[type] || type;
+}
+
+// Employee Management (localStorage-backed)
+function getAllEmployees() {
+  const base = EMPLOYEES_DATA.map(e => ({
+    emp_code: e.c, password_hash: e.p, full_name: e.n,
+    job_title: e.j, department: e.d, hire_date: e.h,
+    leave_balance: e.b, monthly_balance: e.m,
+    is_manager: !!MANAGER_DEPT_CODES[e.c],
+    managed_dept: MANAGER_DEPT_CODES[e.c] || null,
+    is_hr: HR_EMP_CODES.includes(e.c),
+    is_active: true, _source: 'base'
+  }));
+  const added = lsGet('ls_employees_ext').filter(e => !e._deleted);
+  return [...base, ...added].sort((a, b) => a.emp_code - b.emp_code);
+}
+
+function getLocalEmployee(code) {
+  const added = lsGet('ls_employees_ext');
+  return added.find(e => e.emp_code === code && !e._deleted) || null;
+}
+
+function addLocalEmployee(data) {
+  const added = lsGet('ls_employees_ext');
+  if (added.find(e => e.emp_code === data.emp_code && !e._deleted)) {
+    return { success: false, message: 'كود وظيفي موجود بالفعل' };
+  }
+  if (EMPLOYEES_DATA.find(e => e.c === data.emp_code)) {
+    return { success: false, message: 'كود وظيفي موجود بالفعل في البيانات الأساسية' };
+  }
+  data._source = 'local';
+  data.password_hash = hashPassword(data.password_hash || '123456');
+  added.push(data);
+  lsSet('ls_employees_ext', added);
+  // Update EMPLOYEES_DATA fallback for auth
+  const meta = document.createElement('meta');
+  return { success: true };
+}
+
+function updateLocalEmployee(code, updates) {
+  const added = lsGet('ls_employees_ext');
+  const idx = added.findIndex(e => e.emp_code === code && !e._deleted);
+  if (idx < 0) return { success: false, message: 'الموظف غير موجود' };
+  if (updates.password) {
+    updates.password_hash = hashPassword(updates.password);
+    delete updates.password;
+  }
+  Object.assign(added[idx], updates);
+  lsSet('ls_employees_ext', added);
+  return { success: true };
+}
+
+function deleteLocalEmployee(code) {
+  const added = lsGet('ls_employees_ext');
+  const idx = added.findIndex(e => e.emp_code === code && !e._deleted);
+  if (idx >= 0) {
+    added[idx]._deleted = true;
+    lsSet('ls_employees_ext', added);
+    return { success: true };
+  }
+  // Can't delete base employees from frontend
+  if (EMPLOYEES_DATA.find(e => e.c === code)) {
+    return { success: false, message: 'لا يمكن حذف موظف أساسي من هنا. استخدم Supabase Dashboard' };
+  }
+  return { success: false, message: 'الموظف غير موجود' };
+}
+
+async function syncEmployeesToSupabase() {
+  try {
+    const added = lsGet('ls_employees_ext').filter(e => !e._deleted && e._source === 'local');
+    for (const emp of added) {
+      const { error } = await supabase.from('employees').upsert([{
+        emp_code: emp.emp_code, password_hash: emp.password_hash,
+        full_name: emp.full_name, job_title: emp.job_title,
+        department: emp.department, hire_date: emp.hire_date,
+        leave_balance: emp.leave_balance || 0, monthly_balance: emp.monthly_balance || 7.33,
+        is_manager: emp.is_manager || false, managed_dept: emp.managed_dept || null,
+        is_hr: emp.is_hr || false, is_active: true
+      }], { onConflict: 'emp_code' });
+      if (error) return { success: false, message: error.message };
+    }
+    return { success: true };
+  } catch (e) {
+    return { success: false, message: 'Supabase غير متاح' };
+  }
 }
