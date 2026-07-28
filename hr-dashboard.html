@@ -148,11 +148,15 @@
       <div class="tab-content" id="tabEmployees">
         <div class="card">
           <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:15px;">
-            <h2 style="margin:0;">👥 جميع الموظفين</h2>
+            <h2 style="margin:0;cursor:pointer;user-select:none;display:inline-flex;align-items:center;gap:8px;" onclick="toggleCollapse('employeesCollapse',this)">
+              <span class="arrow" id="employeesArrow">▼</span>
+              👥 جميع الموظفين
+            </h2>
             <button class="btn btn-success btn-sm" onclick="openAddEmpModal()">➕ إضافة موظف</button>
           </div>
+          <div id="employeesCollapse" class="collapse-body">
           <input type="text" class="search-box" id="empSearch" placeholder="🔍 بحث بالاسم أو الكود الوظيفي..." oninput="loadEmployees()">
-          <div class="table-wrap">
+          <div class="table-wrap table-scroll">
             <table>
               <thead>
                 <tr>
@@ -173,6 +177,7 @@
                 <tr><td colspan="10" style="text-align:center;color:#999;">جاري التحميل...</td></tr>
               </tbody>
             </table>
+          </div>
           </div>
         </div>
       </div>
